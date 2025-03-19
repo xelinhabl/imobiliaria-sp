@@ -1,0 +1,146 @@
+/* Reset básico para garantir que não haja margens ou paddings indesejados */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Estilos para o container da página inicial */
+.home-container {
+  width: 100%;
+  height: auto; /* Altura automática para se ajustar ao conteúdo */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+}
+
+/* Estilos para o tema light mode */
+.home-container.light-mode {
+  background-color: #fff;
+  color: #333;
+}
+
+/* Estilos para o tema dark mode */
+.home-container.dark-mode {
+  background-color: #333;
+  color: #fff;
+}
+
+/* Estilos para o carrossel */
+.carousel-container {
+  width: 95%; /* Ocupa 95% da largura da tela */
+  margin: 0 auto; /* Centraliza o carrossel */
+  position: relative;
+  overflow: hidden;
+  border-radius: 15px; /* Bordas arredondadas */
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* Sombra suave */
+  padding: 10px; /* Espaçamento interno */
+  background-color: rgba(255, 255, 255, 0.1); /* Fundo semi-transparente */
+}
+
+.carousel-slide {
+  width: 100%; /* Ocupa 100% da largura do container */
+  position: relative;
+}
+
+.carousel-image {
+  width: 100%; /* Ocupa 100% da largura do container */
+  height: auto; /* Altura automática para manter a proporção da imagem */
+  border-radius: 10px; /* Bordas arredondadas */
+  object-fit: cover; /* Garante que a imagem cubra o espaço sem distorcer */
+}
+
+/* Estilos para as setas de navegação */
+.slick-prev,
+.slick-next {
+  z-index: 1; /* Garante que as setas fiquem acima das imagens */
+  width: 40px;
+  height: 40px;
+  background-color: rgba(0, 0, 0, 0.5); /* Fundo semi-transparente */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease; /* Transição suave */
+}
+
+.slick-prev {
+  left: 10px; /* Posição da seta esquerda */
+}
+
+.slick-next {
+  right: 10px; /* Posição da seta direita */
+}
+
+.slick-prev:hover,
+.slick-next:hover {
+  background-color: rgba(0, 0, 0, 0.8); /* Fundo mais escuro ao passar o mouse */
+}
+
+.slick-prev::before,
+.slick-next::before {
+  font-size: 24px;
+  color: #fff; /* Cor das setas */
+}
+
+/* Estilos para os pontos de navegação (bolinhas) */
+.slick-dots {
+  bottom: 20px; /* Posição das bolinhas */
+}
+
+.slick-dots li button:before {
+  color: #fff; /* Cor das bolinhas */
+  opacity: 0.75;
+  font-size: 12px; /* Tamanho das bolinhas */
+}
+
+.slick-dots li.slick-active button:before {
+  color: #007bff; /* Cor da bolinha ativa */
+  opacity: 1;
+}
+
+/* Estilos para o conteúdo da página inicial */
+.home-content {
+  padding: 20px;
+  position: relative; /* Posicionamento relativo para ficar abaixo do carrossel */
+  z-index: 1; /* Garante que o conteúdo fique abaixo do carrossel */
+}
+
+/* Estilos para o tema light mode */
+.home-content.light-mode {
+  background-color: #f9f9f9; /* Fundo claro */
+  color: #333; /* Cor do texto escuro */
+}
+
+/* Estilos para o tema dark mode */
+.home-content.dark-mode {
+  background-color: #444; /* Fundo escuro */
+  color: #fff; /* Cor do texto claro */
+}
+
+.home-content h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.home-content p {
+  font-size: 1.2rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+  .carousel-container {
+    width: 95%; /* Mantém a largura em dispositivos móveis */
+  }
+
+  .home-content h1 {
+    font-size: 2rem; /* Tamanho menor para o título em dispositivos móveis */
+  }
+
+  .home-content p {
+    font-size: 1rem; /* Tamanho menor para o parágrafo em dispositivos móveis */
+  }
+}

@@ -1,0 +1,11 @@
+/* Estilos para o tema escuro */
+.mk-box--bg-dark {
+  background-color: #333; /* Cor de fundo escura */
+  color: white; /* Cor do texto no modo escuro */
+}
+
+/* Estilos para o tema claro */
+.mk-box--bg-light {
+  background-color: white; /* Cor de fundo clara */
+  color: black; /* Cor do texto no modo claro */
+}

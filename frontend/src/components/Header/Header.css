@@ -1,0 +1,137 @@
+/* Estilos base para o header */
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  width: 100%; /* Ensure the header spans the full width of the page */
+  box-sizing: border-box; /* Include padding and border in the width calculation */
+}
+
+/* Estilos para o tema escuro e claro */
+.dark-mode {
+  background-color: #333;
+  color: #fff;
+}
+
+.light-mode {
+  background-color: #fff;
+  color: #333;
+}
+
+/* Estilos para o logo */
+.logo-container .logo {
+  height: 50px;
+  transition: transform 0.3s ease;
+}
+
+.logo-container .logo:hover {
+  transform: scale(1.1);
+}
+
+/* Estilos para a barra de busca */
+.search-container {
+  flex: 1;
+  margin: 0 2rem;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  transition: border-color 0.3s ease;
+}
+
+.search-container input:focus {
+  border-color: #007bff;
+  outline: none;
+}
+
+/* Estilos para os contatos */
+.contact-container {
+  display: flex;
+  gap: 20px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Estilos para o tradutor e alternância de tema */
+.language-container,
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle {
+  font-size: 1.5rem;
+  margin-left: 20px;
+}
+
+/* Estilos para as informações (CRECI e horário) */
+.info-container {
+  text-align: right;
+}
+
+.info-container p {
+  margin: 0;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Efeitos de hover genéricos */
+.hover-effect:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.contact-item:hover .icon,
+.language-container:hover .icon,
+.theme-toggle:hover .icon,
+.info-container p:hover {
+  color: #007bff;
+}
+
+/* Estilos para ícones */
+.icon {
+  font-size: 1.2rem;
+  transition: color 0.3s ease;
+}
+
+/* Estilos para os botões das rotas */
+.route-buttons-container {
+  display: flex;
+  gap: 15px; /* Espaçamento entre os botões */
+}
+
+.route-button {
+  padding: 0.5rem 1rem;
+  background-color: #007bff; /* Cor de fundo */
+  color: #fff; /* Cor do texto */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.route-button:hover {
+  background-color: #0056b3; /* Cor de fundo ao passar o mouse */
+  transform: scale(1.05); /* Efeito de zoom ao passar o mouse */
+}
+
+.route-button:focus {
+  outline: none;
+  box-shadow: 0 0 5px #007bff; /* Destaque ao focar no botão */
+}
