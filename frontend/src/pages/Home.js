@@ -4,7 +4,8 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ThemeContext } from "../context/ThemeContext"; // Importar o contexto do tema
 import ApresentacaoComponent from "../components/Loading/ApresentacaoComponent";
-import Imoveis from "../components/Imoveis/Imoveis"; // Importar o componente Imoveis
+import ImoveisContainer from "../components/Imoveis/ImoveisContainer"; // Importar o componente ImoveisContainer
+import { Box } from "@mui/material"; // Importar Box do Material-UI
 import "./Index_pages.css"; // Estilos personalizados para o Home
 
 const Home = () => {
@@ -42,7 +43,17 @@ const Home = () => {
   return (
     <div className={`home-container ${isDarkMode ? "dark-mode" : "light-mode"}`}>
       {/* Carrossel de banners */}
-      <div className="carousel-container">
+      <Box
+        sx={{
+          width: "85%", // Ocupa 85% da largura da página
+          margin: "0 auto", // Centraliza o carrossel
+          maxWidth: "1200px", // Define uma largura máxima para evitar que fique muito largo em telas grandes
+          borderRadius: "8px", // Bordas arredondadas
+          overflow: "hidden", // Esconde conteúdo que ultrapassa as bordas
+          boxShadow: 3, // Sombra
+          marginBottom: "2rem", // Espaçamento inferior
+        }}
+      >
         <Slider {...settings}>
           {banners.map((banner, index) => (
             <div key={index} className="carousel-slide">
@@ -50,11 +61,12 @@ const Home = () => {
                 src={`/img/${banner}`} // Caminho das imagens na pasta public/img
                 alt={`Banner ${index + 1}`}
                 className="carousel-image"
+                style={{ width: "100%", height: "auto" }} // Garante que a imagem ocupe 100% da largura do contêiner
               />
             </div>
           ))}
         </Slider>
-      </div>
+      </Box>
 
       {/* Conteúdo adicional da página inicial */}
       <div className={`home-content ${isDarkMode ? "dark-mode" : "light-mode"}`}>
@@ -65,8 +77,8 @@ const Home = () => {
         </p>
       </div>
 
-      {/* Componente Imoveis */}
-      <Imoveis />
+      {/* Componente ImoveisContainer */}
+      <ImoveisContainer />
     </div>
   );
 };
