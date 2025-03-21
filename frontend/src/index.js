@@ -21,3 +21,8 @@ root.render(
     </ThemeContextProvider>
   </React.StrictMode>
 );
+
+// Garante que o site volte ao topo após o carregamento
+window.addEventListener("load", () => {
+  window.scrollTo(0, 0);
+});

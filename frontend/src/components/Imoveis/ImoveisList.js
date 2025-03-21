@@ -20,7 +20,7 @@ import "slick-carousel/slick/slick-theme.css";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { keyframes } from "@emotion/react";
-import AnimatedSection from  '../Animated/AnimatedSection'; // Componente de seção animada
+import AnimatedSection from '../Animated/AnimatedSection'; // Componente de seção animada
 
 // Animação de fade-in
 const fadeIn = keyframes`
@@ -104,6 +104,14 @@ const ImoveisList = ({ imoveis, loading }) => {
     ],
   });
 
+  // Conjunto para armazenar chaves únicas de imóveis já exibidos
+  const imoveisExibidos = new Set();
+
+  // Função para gerar uma chave única com base no ID e no título do imóvel
+  const gerarChaveUnica = (imovel) => {
+    return `${imovel.Id}-${imovel.Titulo}`;
+  };
+
   return (
     <>
       {loading ? (
@@ -127,87 +135,99 @@ const ImoveisList = ({ imoveis, loading }) => {
         Object.entries(imoveisPorTipo).map(([tipo, imoveisDoTipo], index) => (
           <AnimatedSection key={tipo} animation="fade-up" delay={`${(index + 1) * 100}`}>
             <Box sx={{ mb: 4, animation: `${fadeIn} 0.5s ease-in-out` }}>
-              <Typography variant="h5" component="h3" gutterBottom>
+              <Typography variant="h5" component="h3" gutterBottom sx={{ mb: 2 }}>
                 {tipo}
               </Typography>
               <Divider sx={{ mb: 3 }} />
               <Slider {...settings(imoveisDoTipo)}>
-                {imoveisDoTipo.slice(0, 5).map((imovel) => (
-                  <Box key={imovel.Id} sx={{ px: 1, height: "100%" }}>
-                    <Card
-                      sx={{
-                        height: "450px", // Altura fixa para o card
-                        display: "flex",
-                        flexDirection: "column",
-                        boxShadow: 3,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <CardMedia
-                        component="img"
-                        height="200"
-                        image={imovel.UrlFoto || "/img/default.jpg"}
-                        alt={`Foto do imóvel ${imovel.Titulo}`}
-                        sx={{ objectFit: "cover" }}
-                      />
-                      <CardContent
+                {imoveisDoTipo.slice(0, 5).map((imovel) => {
+                  // Gera uma chave única para o imóvel
+                  const chaveUnica = gerarChaveUnica(imovel);
+
+                  // Verifica se o imóvel já foi exibido
+                  if (imoveisExibidos.has(chaveUnica)) {
+                    return null; // Pula imóveis repetidos
+                  }
+                  imoveisExibidos.add(chaveUnica); // Adiciona a chave ao conjunto de imóveis exibidos
+
+                  return (
+                    <Box key={imovel.Id} sx={{ px: 1, py: 2, height: "100%" }}> {/* Adicionado py: 2 para espaçamento vertical */}
+                      <Card
                         sx={{
-                          flexGrow: 1,
+                          height: "450px", // Altura fixa para o card
                           display: "flex",
                           flexDirection: "column",
-                          justifyContent: "center", // Centraliza o conteúdo verticalmente
-                          alignItems: "center", // Centraliza o conteúdo horizontalmente
-                          gap: 2,
-                          padding: "16px", // Espaçamento interno consistente
-                          textAlign: "center", // Centraliza o texto
+                          boxShadow: 3,
+                          overflow: "hidden",
                         }}
                       >
-                        <Typography
-                          variant="h6"
-                          component="h3"
+                        <CardMedia
+                          component="img"
+                          height="200"
+                          image={imovel.UrlFoto || "/img/default.jpg"}
+                          alt={`Foto do imóvel ${imovel.Titulo}`}
+                          sx={{ objectFit: "cover" }}
+                        />
+                        <CardContent
                           sx={{
-                            fontWeight: "bold",
-                            fontSize: "1rem", // Tamanho da fonte reduzido
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2, // Limita o título a 2 linhas
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis", // Adiciona "..." ao final do texto cortado
-                            minHeight: "3rem", // Altura mínima para garantir consistência
+                            flexGrow: 1,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center", // Centraliza o conteúdo verticalmente
+                            alignItems: "center", // Centraliza o conteúdo horizontalmente
+                            gap: 2, // Espaçamento entre os elementos internos
+                            padding: "16px", // Espaçamento interno consistente
+                            textAlign: "center", // Centraliza o texto
                           }}
                         >
-                          {imovel.Titulo || "Imóvel sem nome"}
-                        </Typography>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "center" }}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <CropSquareIcon sx={{ fontSize: "1rem" }} />
-                            <Typography variant="body2" color="textSecondary">
-                              Área Total: {imovel.AreaTotal}m²
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <BedIcon sx={{ fontSize: "1rem" }} />
-                            <Typography variant="body2" color="textSecondary">
-                              Dormitórios: {imovel.Dormitorio}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <BathtubIcon sx={{ fontSize: "1rem" }} />
-                            <Typography variant="body2" color="textSecondary">
-                              Banheiros: {imovel.WC}
-                            </Typography>
-                          </Box>
-                          <Typography variant="body2" color="textSecondary">
-                            <strong>Bairro:</strong> {imovel.Bairro}
+                          <Typography
+                            variant="h6"
+                            component="h3"
+                            sx={{
+                              fontWeight: "bold",
+                              fontSize: "1rem", // Tamanho da fonte reduzido
+                              display: "-webkit-box",
+                              WebkitLineClamp: 2, // Limita o título a 2 linhas
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis", // Adiciona "..." ao final do texto cortado
+                              minHeight: "3rem", // Altura mínima para garantir consistência
+                              mb: 1, // Espaçamento abaixo do título
+                            }}
+                          >
+                            {imovel.Titulo || "Imóvel sem nome"}
                           </Typography>
-                          <Typography variant="body2" sx={{ color: "gold", fontWeight: "bold" }}>
-                            {formatarValor(imovel.ValorVenda)}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Box>
-                ))}
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "center" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <CropSquareIcon sx={{ fontSize: "1rem" }} />
+                              <Typography variant="body2" color="textSecondary">
+                                Área Total: {imovel.AreaTotal}m²
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <BedIcon sx={{ fontSize: "1rem" }} />
+                              <Typography variant="body2" color="textSecondary">
+                                Dormitórios: {imovel.Dormitorio}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <BathtubIcon sx={{ fontSize: "1rem" }} />
+                              <Typography variant="body2" color="textSecondary">
+                                Banheiros: {imovel.WC}
+                              </Typography>
+                            </Box>
+                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                              <strong>Bairro:</strong> {imovel.Bairro}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: "gold", fontWeight: "bold", mt: 1 }}>
+                              {formatarValor(imovel.ValorVenda)}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  );
+                })}
               </Slider>
               {imoveisDoTipo.length > 5 && (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>

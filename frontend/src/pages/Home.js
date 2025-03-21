@@ -68,6 +68,9 @@ const Home = () => {
         </Slider>
       </Box>
 
+      {/* Ajuste de espaçamento entre o carrossel e o próximo elemento */}
+      <div style={{ marginBottom: "1rem" }}></div>
+
       {/* Conteúdo adicional da página inicial */}
       <div className={`home-content ${isDarkMode ? "dark-mode" : "light-mode"}`}>
         <h1>Bem-vindo à Nossa Imobiliária</h1>

@@ -1,12 +1,26 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Container, Grid, Typography, Link, TextField, Button, IconButton, Box, useTheme, Paper } from '@mui/material';
+import { 
+    Container, Grid, Typography, Link, TextField, Button, IconButton, Box, useTheme, Paper, Snackbar 
+} from '@mui/material';
+import MuiAlert from '@mui/material/Alert'; // Componente Alert para o Snackbar
 import { Facebook, Twitter, LinkedIn, YouTube, Pinterest, Instagram, Phone, WhatsApp } from '@mui/icons-material';
 import { LanguageContext } from '../../context/LanguageContext'; // Contexto de idioma
 import { ThemeContext } from '../../context/ThemeContext'; // Contexto de tema
-import AnimatedSection from  '../Animated/AnimatedSection'; // Componente de seção animada
+import AnimatedSection from '../Animated/AnimatedSection'; // Componente de seção animada
+import { mask, unMask } from 'remask'; // Biblioteca para máscaras
+
+// Componente Alert personalizado para o Snackbar
+const Alert = React.forwardRef(function Alert(props, ref) {
+    return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
+});
 
 const Footer = () => {
     const [logoUrl, setLogoUrl] = useState("");
+    const [email, setEmail] = useState(""); // Estado para o email da newsletter
+    const [callRequest, setCallRequest] = useState({ name: '', email: '', phone: '' }); // Estado para o formulário "Ligamos para você"
+    const [openSnackbar, setOpenSnackbar] = useState(false); // Estado para controlar o Snackbar
+    const [snackbarMessage, setSnackbarMessage] = useState(""); // Mensagem do Snackbar
+    const [snackbarSeverity, setSnackbarSeverity] = useState("success"); // Severidade do Snackbar (success, error, etc.)
     const theme = useTheme(); // Acessa o tema atual (dark/light mode)
     const { language } = useContext(LanguageContext); // Acessa o idioma atual
     const { isDarkMode } = useContext(ThemeContext); // Acessa o modo dark/light
@@ -26,6 +40,10 @@ const Footer = () => {
             callUs: "Ligamos para você",
             clientArea: "Central do Cliente",
             accessSystem: "Acessar Sistema",
+            newsletterSuccess: "Inscrição realizada com sucesso!",
+            newsletterError: "Erro ao realizar a inscrição.",
+            callRequestSuccess: "Solicitação enviada com sucesso!",
+            callRequestError: "Erro ao enviar a solicitação.",
         },
         en: {
             rights: "All rights reserved.",
@@ -40,6 +58,10 @@ const Footer = () => {
             callUs: "We Call You",
             clientArea: "Client Area",
             accessSystem: "Access System",
+            newsletterSuccess: "Subscription successful!",
+            newsletterError: "Error during subscription.",
+            callRequestSuccess: "Request sent successfully!",
+            callRequestError: "Error sending request.",
         },
         es: {
             rights: "Todos los derechos reservados.",
@@ -54,9 +76,22 @@ const Footer = () => {
             callUs: "Te Llamamos",
             clientArea: "Área del Cliente",
             accessSystem: "Acceder al Sistema",
+            newsletterSuccess: "¡Suscripción realizada con éxito!",
+            newsletterError: "Error al realizar la suscripción.",
+            callRequestSuccess: "¡Solicitud enviada con éxito!",
+            callRequestError: "Error al enviar la solicitud.",
         },
     };
 
+    // Função para fechar o Snackbar
+    const handleCloseSnackbar = (event, reason) => {
+        if (reason === 'clickaway') {
+            return;
+        }
+        setOpenSnackbar(false);
+    };
+
+    // Busca a logo da API
     useEffect(() => {
         const fetchLogo = async () => {
             try {
@@ -75,6 +110,65 @@ const Footer = () => {
 
         fetchLogo();
     }, []);
+
+    // Função para lidar com a inscrição na newsletter
+    const handleNewsletterSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/newsletter/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email }),
+            });
+            if (response.ok) {
+                setSnackbarMessage(translations[language].newsletterSuccess);
+                setSnackbarSeverity("success");
+                setOpenSnackbar(true);
+                setEmail(""); // Limpa o campo de email após o sucesso
+            } else {
+                setSnackbarMessage(translations[language].newsletterError);
+                setSnackbarSeverity("error");
+                setOpenSnackbar(true);
+            }
+        } catch (error) {
+            console.error("Erro ao enviar o email:", error);
+        }
+    };
+
+    // Função para lidar com o envio do formulário "Ligamos para você"
+    const handleCallRequestSubmit = async (e) => {
+        e.preventDefault();
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/call-request/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(callRequest),
+            });
+            if (response.ok) {
+                setSnackbarMessage(translations[language].callRequestSuccess);
+                setSnackbarSeverity("success");
+                setOpenSnackbar(true);
+                setCallRequest({ name: '', email: '', phone: '' }); // Limpa os campos após o sucesso
+            } else {
+                setSnackbarMessage(translations[language].callRequestError);
+                setSnackbarSeverity("error");
+                setOpenSnackbar(true);
+            }
+        } catch (error) {
+            console.error("Erro ao enviar a solicitação:", error);
+        }
+    };
+
+    // Função para aplicar máscara no telefone
+    const handlePhoneChange = (e) => {
+        const unmaskedValue = unMask(e.target.value);
+        const maskedValue = mask(unmaskedValue, ['(99) 99999-9999']);
+        setCallRequest({ ...callRequest, phone: maskedValue });
+    };
 
     return (
         <Paper
@@ -157,14 +251,18 @@ const Footer = () => {
                             <Typography variant="h6" gutterBottom>
                                 {translations[language].newsletter}
                             </Typography>
-                            <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                            <Box component="form" onSubmit={handleNewsletterSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
                                 <TextField
                                     variant="outlined"
                                     placeholder="Seu e-mail"
                                     size="small"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    type="email"
+                                    required
                                     sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }}
                                 />
-                                <Button variant="contained" color="primary">
+                                <Button type="submit" variant="contained" color="primary">
                                     Assinar
                                 </Button>
                             </Box>
@@ -196,11 +294,36 @@ const Footer = () => {
                             <Typography variant="h6" gutterBottom>
                                 {translations[language].callUs}
                             </Typography>
-                            <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-                                <TextField variant="outlined" placeholder="Nome" size="small" sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }} />
-                                <TextField variant="outlined" placeholder="E-mail" size="small" sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }} />
-                                <TextField variant="outlined" placeholder="Telefone" size="small" sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }} />
-                                <Button variant="contained" color="primary">
+                            <Box component="form" onSubmit={handleCallRequestSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                                <TextField
+                                    variant="outlined"
+                                    placeholder="Nome"
+                                    size="small"
+                                    value={callRequest.name}
+                                    onChange={(e) => setCallRequest({ ...callRequest, name: e.target.value })}
+                                    required
+                                    sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }}
+                                />
+                                <TextField
+                                    variant="outlined"
+                                    placeholder="E-mail"
+                                    size="small"
+                                    value={callRequest.email}
+                                    onChange={(e) => setCallRequest({ ...callRequest, email: e.target.value })}
+                                    type="email"
+                                    required
+                                    sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }}
+                                />
+                                <TextField
+                                    variant="outlined"
+                                    placeholder="Telefone"
+                                    size="small"
+                                    value={callRequest.phone}
+                                    onChange={handlePhoneChange}
+                                    required
+                                    sx={{ bgcolor: isDarkMode ? theme.palette.grey[800] : theme.palette.common.white, width: '100%' }}
+                                />
+                                <Button type="submit" variant="contained" color="primary">
                                     Enviar
                                 </Button>
                             </Box>
@@ -232,6 +355,18 @@ const Footer = () => {
                     </Grid>
                 </AnimatedSection>
             </Container>
+
+            {/* Snackbar para exibir mensagem de sucesso ou erro */}
+            <Snackbar
+                open={openSnackbar}
+                autoHideDuration={6000} // Fecha automaticamente após 6 segundos
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} // Posição do Snackbar
+            >
+                <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+                    {snackbarMessage}
+                </Alert>
+            </Snackbar>
         </Paper>
     );
 };
