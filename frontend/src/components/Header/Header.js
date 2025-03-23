@@ -14,16 +14,28 @@ import {
   Toolbar,
   Grid,
 } from "@mui/material";
-import { FaWhatsapp, FaPhone, FaSun, FaMoon, FaFacebook, FaInstagram, FaTwitter, FaYoutube } from "react-icons/fa";
+import {
+  FaWhatsapp,
+  FaPhone,
+  FaSun,
+  FaMoon,
+  FaFacebook,
+  FaInstagram,
+  FaTwitter,
+  FaYoutube,
+} from "react-icons/fa";
 import { MdTranslate } from "react-icons/md";
 import { LanguageContext } from "../../context/LanguageContext";
+import { ThemeContext } from "../../context/ThemeContext"; // Importe o ThemeContext
 import AnimatedSection from "../../components/Animated/AnimatedSection";
 import { NumericFormat } from "react-number-format"; // Substituição do react-input-mask
 
 function Header() {
   const navigate = useNavigate();
   const { language, toggleLanguage } = useContext(LanguageContext);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext); // Use o ThemeContext
+  const theme = useTheme(); // Acessa o tema do Material-UI
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [logoUrl, setLogoUrl] = useState("");
   const [translations, setTranslations] = useState({});
 
@@ -65,13 +77,6 @@ function Header() {
     fetchTranslations();
   }, [language]);
 
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const toggleTheme = () => {
-    setIsDarkMode((prevMode) => !prevMode);
-  };
-
   const handleSearch = (query) => {
     navigate(`/search?q=${query}`);
   };
@@ -80,6 +85,7 @@ function Header() {
     { path: "/", name: "Home" },
     { path: "/sobre", name: "Sobre" },
     { path: "/contato", name: "Contato" },
+    { path: "/todos-imoveis", name: "Todos os Imóveis" },
   ];
 
   return (
@@ -88,8 +94,8 @@ function Header() {
         <AppBar
           position="static"
           sx={{
-            backgroundColor: isDarkMode ? "#333" : "#fff",
-            color: isDarkMode ? "#fff" : "#333",
+            backgroundColor: theme.palette.background.default, // Cor de fundo do tema
+            color: theme.palette.text.primary, // Cor do texto do tema
             boxShadow: "none",
             py: 1,
           }}
@@ -115,9 +121,9 @@ function Header() {
                     variant="text"
                     onClick={() => navigate(route.path)}
                     sx={{
-                      color: isDarkMode ? "#fff" : "#333",
+                      color: theme.palette.text.primary, // Cor do texto do tema
                       "&:hover": {
-                        backgroundColor: isDarkMode ? "#444" : "#f5f5f5",
+                        backgroundColor: theme.palette.action.hover, // Cor de hover do tema
                       },
                     }}
                   >
@@ -132,8 +138,8 @@ function Header() {
                   <IconButton
                     onClick={toggleLanguage}
                     sx={{
-                      color: isDarkMode ? "#fff" : "#333",
-                      border: `1px solid ${isDarkMode ? "#666" : "#ccc"}`,
+                      color: theme.palette.text.primary, // Cor do texto do tema
+                      border: `1px solid ${theme.palette.divider}`, // Cor da borda do tema
                     }}
                   >
                     <MdTranslate />
@@ -143,14 +149,15 @@ function Header() {
                   </IconButton>
                 </Tooltip>
 
+                {/* Botão para alternar o tema */}
                 <IconButton
-                  onClick={toggleTheme}
+                  onClick={toggleTheme} // Use a função toggleTheme do ThemeContext
                   sx={{
-                    color: isDarkMode ? "#fff" : "#333",
-                    border: `1px solid ${isDarkMode ? "#666" : "#ccc"}`,
+                    color: theme.palette.text.primary, // Cor do texto do tema
+                    border: `1px solid ${theme.palette.divider}`, // Cor da borda do tema
                   }}
                 >
-                  {isDarkMode ? <FaSun /> : <FaMoon />}
+                  {isDarkMode ? <FaSun /> : <FaMoon />} {/* Use isDarkMode para alternar o ícone */}
                 </IconButton>
               </Box>
             </Toolbar>
@@ -162,7 +169,7 @@ function Header() {
       <AnimatedSection animation="fade-up" delay="200">
         <Box
           sx={{
-            backgroundColor: isDarkMode ? "#444" : "#f5f5f5",
+            backgroundColor: theme.palette.background.paper, // Cor de fundo do tema
             py: 2,
           }}
         >
@@ -180,7 +187,7 @@ function Header() {
                     }
                   }}
                   sx={{
-                    backgroundColor: isDarkMode ? "#555" : "#fff",
+                    backgroundColor: theme.palette.background.paper, // Cor de fundo do tema
                   }}
                 />
               </Grid>
@@ -192,9 +199,13 @@ function Header() {
                     variant="outlined"
                     startIcon={<FaWhatsapp />}
                     sx={{
-                      color: isDarkMode ? "#fff" : "#333",
-                      borderColor: isDarkMode ? "#666" : "#ccc",
+                      color: theme.palette.text.primary, // Cor do texto do tema
+                      borderColor: theme.palette.divider, // Cor da borda do tema
                     }}
+                    component="a"
+                    href="https://wa.me/5511938020000"
+                    target="_blank"
+                    rel="noopener noreferrer"
                   >
                     <NumericFormat
                       value="11938020000"
@@ -206,8 +217,8 @@ function Header() {
                     variant="outlined"
                     startIcon={<FaPhone />}
                     sx={{
-                      color: isDarkMode ? "#fff" : "#333",
-                      borderColor: isDarkMode ? "#666" : "#ccc",
+                      color: theme.palette.text.primary, // Cor do texto do tema
+                      borderColor: theme.palette.divider, // Cor da borda do tema
                     }}
                   >
                     <NumericFormat
@@ -227,22 +238,22 @@ function Header() {
       <AnimatedSection animation="fade-up" delay="300">
         <Box
           sx={{
-            backgroundColor: isDarkMode ? "#333" : "#fff",
+            backgroundColor: theme.palette.background.default, // Cor de fundo do tema
             py: 2,
           }}
         >
           <Container maxWidth="lg">
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <IconButton href="https://facebook.com" target="_blank" sx={{ color: isDarkMode ? "#fff" : "#333" }}>
+              <IconButton href="https://facebook.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaFacebook />
               </IconButton>
-              <IconButton href="https://instagram.com" target="_blank" sx={{ color: isDarkMode ? "#fff" : "#333" }}>
+              <IconButton href="https://instagram.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaInstagram />
               </IconButton>
-              <IconButton href="https://twitter.com" target="_blank" sx={{ color: isDarkMode ? "#fff" : "#333" }}>
+              <IconButton href="https://twitter.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaTwitter />
               </IconButton>
-              <IconButton href="https://youtube.com" target="_blank" sx={{ color: isDarkMode ? "#fff" : "#333" }}>
+              <IconButton href="https://youtube.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaYoutube />
               </IconButton>
             </Box>

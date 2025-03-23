@@ -21,6 +21,7 @@ import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { keyframes } from "@emotion/react";
 import AnimatedSection from '../Animated/AnimatedSection'; // Componente de seção animada
+import { useNavigate } from "react-router-dom"; // Importe useNavigate
 
 // Animação de fade-in
 const fadeIn = keyframes`
@@ -63,6 +64,8 @@ const formatarValor = (valor) => {
 };
 
 const ImoveisList = ({ imoveis, loading }) => {
+  const navigate = useNavigate(); // Hook para navegação
+
   // Agrupar imóveis por tipo
   const imoveisPorTipo = imoveis.reduce((acc, imovel) => {
     const tipo = imovel.Tipo || "Outros";
@@ -112,6 +115,11 @@ const ImoveisList = ({ imoveis, loading }) => {
     return `${imovel.Id}-${imovel.Titulo}`;
   };
 
+  // Função para navegar para a página de detalhes do imóvel
+  const handleCardClick = (imovelId) => {
+    navigate(`/imovel/${imovelId}`); // Navega para a rota de detalhes do imóvel
+  };
+
   return (
     <>
       {loading ? (
@@ -159,7 +167,13 @@ const ImoveisList = ({ imoveis, loading }) => {
                           flexDirection: "column",
                           boxShadow: 3,
                           overflow: "hidden",
+                          cursor: "pointer", // Adiciona cursor de ponteiro para indicar que é clicável
+                          transition: "transform 0.3s ease", // Adiciona transição suave
+                          "&:hover": {
+                            transform: "scale(1.03)", // Efeito de zoom ao passar o mouse
+                          },
                         }}
+                        onClick={() => handleCardClick(imovel.Id)} // Redireciona ao clicar no card
                       >
                         <CardMedia
                           component="img"

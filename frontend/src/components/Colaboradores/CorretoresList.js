@@ -97,7 +97,13 @@ const CorretoresList = ({ corretores }) => {
         boxShadow: theme.shadows[3], // Sombra do tema
       }}
     >
-      <Typography variant="h5" component="h3" align="center" gutterBottom sx={{ fontWeight: "bold" }}>
+      <Typography
+        variant="h5"
+        component="h3"
+        align="center"
+        gutterBottom
+        sx={{ fontWeight: "bold", color: theme.palette.text.primary }} // Cor do texto dinâmica
+      >
         Nossos Corretores
       </Typography>
       <Box sx={{ position: "relative", paddingBottom: "50px" }}>
@@ -134,10 +140,16 @@ const CorretoresList = ({ corretores }) => {
                       border: `2px solid ${theme.palette.primary.main}`, // Borda usando a cor primária do tema
                     }}
                   />
-                  <Typography variant="h6" sx={{ marginTop: "1.5rem", fontWeight: "bold" }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ marginTop: "1.5rem", fontWeight: "bold", color: theme.palette.text.primary }} // Cor do texto dinâmica
+                  >
                     {formatarNome(corretor.NomeComercial)} {/* Nome formatado */}
                   </Typography>
-                  <Typography variant="body2" color="textSecondary" sx={{ marginTop: "0.5rem" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ marginTop: "0.5rem", color: theme.palette.text.secondary }} // Cor do texto dinâmica
+                  >
                     CRECI: {creciFormatado} {/* CRECI formatado */}
                   </Typography>
                 </Box>

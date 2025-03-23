@@ -11,21 +11,3 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
-
-:root {
-  --background-color: #ffffff;
-  --text-color: #000000;
-  --header-bg-color: #f0f0f0;
-  --header-text-color: #000000;
-  --button-bg-color: #007bff;
-  --button-text-color: #ffffff;
-}
-
-[data-theme="dark"] {
-  --background-color: #121212;
-  --text-color: #ffffff;
-  --header-bg-color: #1f1f1f;
-  --header-text-color: #ffffff;
-  --button-bg-color: #ff5722;
-  --button-text-color: #000000;
-}

@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Imovel, Configuracao
-from .serializers import ImovelSerializer
+from .models import Imovel, Configuracao, About
+from .serializers import ImovelSerializer, NewsletterSubscriberSerializer, CallRequestSerializer, AboutSerializer, ContactSerializer
 from django.http import JsonResponse
 from django.conf import settings
 from django.templatetags.static import static
@@ -39,9 +39,11 @@ class LogoView(APIView):
 def logo_view(request):
     return JsonResponse({"message": "Logo endpoint response"})
 
-class AboutsView(View):
+class AboutView(APIView):
     def get(self, request):
-        return JsonResponse({'message': 'This is the Abouts page'})
+        about = About.objects.first()  # Retorna o primeiro registro (ou ajuste conforme necessário)
+        serializer = AboutSerializer(about)
+        return Response(serializer.data)
 
 class HomeView(View):
     def get(self, request):
@@ -50,3 +52,27 @@ class HomeView(View):
 class ContactView(View):
     def get(self, request):
         return JsonResponse({'message': 'This is the Contact page'})
+    
+class NewsletterView(APIView):
+    def post(self, request):
+        serializer = NewsletterSubscriberSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class CallRequestView(APIView):
+    def post(self, request):
+        serializer = CallRequestSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class ContactView(APIView):
+    def post(self, request):
+        serializer = ContactSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

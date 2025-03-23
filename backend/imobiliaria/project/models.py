@@ -36,3 +36,36 @@ class Pagina(models.Model):
 
     def __str__(self):
         return self.titulo
+    
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    subscribed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.email
+    
+class CallRequest(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20)
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+    
+class About(models.Model):
+    foto = models.ImageField(upload_to='about/')  # Campo para upload de foto
+    descricao = models.TextField()  # Campo para a descrição
+
+    def __str__(self):
+        return f"Sobre Nós - {self.id}"
+
+class Contact(models.Model):
+    nome = models.CharField(max_length=255)  # Nome do contato
+    email = models.EmailField()  # E-mail do contato
+    telefone = models.CharField(max_length=20)  # Telefone do contato
+    mensagem = models.TextField()  # Mensagem do contato
+    data_envio = models.DateTimeField(auto_now_add=True)  # Data de envio
+
+    def __str__(self):
+        return f"Contato de {self.nome}"

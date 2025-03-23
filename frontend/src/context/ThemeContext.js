@@ -6,7 +6,10 @@ export const ThemeContext = createContext();
 export const ThemeContextProvider = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  // Cria um tema dinâmico com base no modo (dark/light)
+  const toggleTheme = () => {
+    setIsDarkMode((prevMode) => !prevMode);
+  };
+
   const theme = useMemo(
     () =>
       createTheme({
@@ -18,7 +21,7 @@ export const ThemeContextProvider = ({ children }) => {
   );
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, setIsDarkMode }}>
+    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
       <ThemeProvider theme={theme}>{children}</ThemeProvider>
     </ThemeContext.Provider>
   );

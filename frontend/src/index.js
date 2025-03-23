@@ -11,7 +11,7 @@ const root = createRoot(container); // Cria a raiz
 
 root.render(
   <React.StrictMode>
-    {/* Envolve a aplicação com os providers de tema, idioma e animações */}
+    {/* Envolve a aplicação com o ThemeProvider do Material-UI */}
     <ThemeContextProvider>
       <LanguageProvider>
         <AnimationProvider>

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom"; // Importe useLocation
 import {
   Container,
   Typography,
@@ -9,35 +10,54 @@ import {
   Snackbar,
 } from "@mui/material";
 import MuiAlert from "@mui/material/Alert";
-import { NumericFormat } from "react-number-format"; // Substituição do react-input-mask
+import { NumericFormat } from "react-number-format";
 
-// Componente Alert personalizado para o Snackbar
 const Alert = React.forwardRef(function Alert(props, ref) {
   return <MuiAlert elevation={6} ref={ref} variant="filled" {...props} />;
 });
 
 const Contact = () => {
+  const location = useLocation(); // Para acessar os dados passados via state
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
     telefone: "",
     mensagem: "",
+    imovelId: "",
+    titulo: "",
+    valor: "",
+    bairro: "",
   });
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [snackbarSeverity, setSnackbarSeverity] = useState("success");
 
-  // Função para lidar com a mudança nos campos do formulário
+  // Preenche os dados do imóvel ao carregar o componente
+  useEffect(() => {
+    if (location.state) {
+      const { imovelId, titulo, valor, bairro } = location.state;
+      setFormData((prevData) => ({
+        ...prevData,
+        imovelId,
+        titulo,
+        valor,
+        bairro,
+        mensagem: `Olá, estou interessado no imóvel "${titulo}" no bairro ${bairro} com valor ${new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(valor)}. Por favor, entre em contato comigo.`,
+      }));
+    }
+  }, [location.state]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  // Função para enviar o formulário
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validação básica do e-mail
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       setSnackbarMessage("Por favor, insira um e-mail válido.");
       setSnackbarSeverity("error");
@@ -57,7 +77,7 @@ const Contact = () => {
         setSnackbarMessage("Mensagem enviada com sucesso!");
         setSnackbarSeverity("success");
         setOpenSnackbar(true);
-        setFormData({ nome: "", email: "", telefone: "", mensagem: "" }); // Limpa o formulário
+        setFormData({ nome: "", email: "", telefone: "", mensagem: "", imovelId: "", titulo: "", valor: "", bairro: "" });
       } else {
         setSnackbarMessage("Erro ao enviar a mensagem.");
         setSnackbarSeverity("error");
@@ -71,7 +91,6 @@ const Contact = () => {
     }
   };
 
-  // Função para fechar o Snackbar
   const handleCloseSnackbar = (event, reason) => {
     if (reason === "clickaway") {
       return;
@@ -132,13 +151,17 @@ const Contact = () => {
             rows={4}
             fullWidth
           />
+          {/* Campos ocultos para enviar informações do imóvel */}
+          <input type="hidden" name="imovelId" value={formData.imovelId} />
+          <input type="hidden" name="titulo" value={formData.titulo} />
+          <input type="hidden" name="valor" value={formData.valor} />
+          <input type="hidden" name="bairro" value={formData.bairro} />
           <Button type="submit" variant="contained" color="primary" size="large">
             Enviar
           </Button>
         </Box>
       </Paper>
 
-      {/* Snackbar para exibir mensagem de sucesso ou erro */}
       <Snackbar
         open={openSnackbar}
         autoHideDuration={6000}
