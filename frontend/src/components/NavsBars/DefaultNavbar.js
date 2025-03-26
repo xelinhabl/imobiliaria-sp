@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
-import { FaFacebook, FaInstagram, FaTwitter, FaYoutube } from "react-icons/fa";
+import { FaFacebook, FaInstagram, FaYoutube } from "react-icons/fa";
 import AnimatedSection from  '../Animated/AnimatedSection'; // Componente de seção animada
 import "./DefaultNavBar.css";
 
@@ -32,16 +32,13 @@ const DefaultNavbar = ({ routes, action, transparent, relative, light, center })
 
           {/* Mídias sociais */}
           <div className="navbar-social">
-            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+            <a href="https://web.facebook.com/cmarqxsp/" target="_blank" rel="noopener noreferrer">
               <FaFacebook />
             </a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.instagram.com/cmarqximoveis/" target="_blank" rel="noopener noreferrer">
               <FaInstagram />
             </a>
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
-              <FaTwitter />
-            </a>
-            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+            <a href="https://www.youtube.com/@cmarqx" target="_blank" rel="noopener noreferrer">
               <FaYoutube />
             </a>
           </div>

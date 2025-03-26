@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,9 +47,15 @@ MIDDLEWARE = [
 ]
 
 CORS_ORIGIN_ALLOW_ALL = False  # Alterado para False para maior controle
+
 CORS_ORIGIN_WHITELIST = [
     'http://localhost:3000',  # Adicione aqui as origens permitidas
     'http://127.0.0.1:3000',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
 
 ROOT_URLCONF = 'imobiliaria.urls'
@@ -122,8 +129,16 @@ STATICFILES_DIRS = [
     BASE_DIR / 'media/logos',  # Certifique-se de que a pasta 'static' existe no projeto
 ]
 
+# Configurações de mídia
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
+
+# Configurações estáticas
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static/')
+
+# Extensões permitidas (opcional)
+FILE_UPLOAD_PERMISSIONS = 0o644
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field

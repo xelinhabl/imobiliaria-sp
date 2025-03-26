@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.utils.safestring import mark_safe
+from django.core.validators import FileExtensionValidator
 
 class Imovel(models.Model):
     titulo = models.CharField(max_length=255)
@@ -69,3 +70,48 @@ class Contact(models.Model):
 
     def __str__(self):
         return f"Contato de {self.nome}"
+    
+
+class Agendamento(models.Model):
+    imovel_id = models.CharField(max_length=100)
+    titulo = models.CharField(max_length=200, default='Sem título')
+    valor = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    bairro = models.CharField(max_length=100, blank=True, null=True)
+    cidade = models.CharField(max_length=100, blank=True, null=True)
+    nome = models.CharField(max_length=100)
+    email = models.EmailField()
+    telefone = models.CharField(max_length=20)
+    data_visita = models.DateField()
+    hora_visita = models.CharField(max_length=5)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Agendamento para {self.nome} em {self.data_visita.strftime('%d/%m/%Y')} às {self.hora_visita}"
+    
+class BannerCarrossel(models.Model):
+    titulo = models.CharField(max_length=100, blank=True, null=True)
+    descricao = models.TextField(blank=True, null=True)
+    imagem = models.ImageField(upload_to='banners/')
+    
+    @property
+    def imagem_url(self):
+        if self.imagem and hasattr(self.imagem, 'url'):
+            return self.imagem.url
+        return None
+    
+    ordem = models.PositiveIntegerField(default=0)
+    ativo = models.BooleanField(default=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['ordem']
+        verbose_name = 'Banner do Carrossel'
+        verbose_name_plural = 'Banners do Carrossel'
+
+    def __str__(self):
+        return self.titulo or f"Banner {self.id}"
+
+    def get_absolute_image_url(self):
+        if self.imagem:
+            return self.imagem.url
+        return None

@@ -198,3 +198,37 @@
     font-size: 18px;
   }
 }
+
+.carousel-slide {
+  position: relative;
+  width: 100%;
+}
+
+.carousel-image {
+  width: 100%;
+  height: auto;
+  max-height: 500px;
+  object-fit: cover;
+}
+
+.carousel-caption {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  padding: 15px;
+  border-radius: 5px;
+}
+
+.carousel-caption p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Adicione estilos para dark/light mode conforme necessário */
+.dark-mode .carousel-caption {
+  background-color: rgba(255, 255, 255, 0.8);
+  color: #333;
+}

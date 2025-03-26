@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Imovel, Configuracao, About
-from .serializers import ImovelSerializer, NewsletterSubscriberSerializer, CallRequestSerializer, AboutSerializer, ContactSerializer
+from .models import Imovel, Configuracao, About, BannerCarrossel
+from .serializers import ImovelSerializer, NewsletterSubscriberSerializer, CallRequestSerializer, AboutSerializer, ContactSerializer, AgendamentoSerializer, BannerCarrosselSerializer
 from django.http import JsonResponse
 from django.conf import settings
 from django.templatetags.static import static
@@ -45,9 +45,11 @@ class AboutView(APIView):
         serializer = AboutSerializer(about)
         return Response(serializer.data)
 
-class HomeView(View):
+class BannerCarrosselView(APIView):
     def get(self, request):
-        return JsonResponse({'message': 'This is the Home page'})
+        banners = BannerCarrossel.objects.filter(ativo=True).order_by('ordem')
+        serializer = BannerCarrosselSerializer(banners, many=True)
+        return Response(serializer.data)
 
 class ContactView(View):
     def get(self, request):
@@ -72,6 +74,14 @@ class CallRequestView(APIView):
 class ContactView(APIView):
     def post(self, request):
         serializer = ContactSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class AgendamentoView(APIView):
+    def post(self, request):
+        serializer = AgendamentoSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)

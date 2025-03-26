@@ -3,7 +3,7 @@ import {
     Container, Grid, Typography, Link, TextField, Button, IconButton, Box, useTheme, Paper, Snackbar 
 } from '@mui/material';
 import MuiAlert from '@mui/material/Alert'; // Componente Alert para o Snackbar
-import { Facebook, Twitter, LinkedIn, YouTube, Pinterest, Instagram, Phone, WhatsApp } from '@mui/icons-material';
+import { Facebook, YouTube, Instagram, Phone, WhatsApp } from '@mui/icons-material';
 import { LanguageContext } from '../../context/LanguageContext'; // Contexto de idioma
 import { ThemeContext } from '../../context/ThemeContext'; // Contexto de tema
 import AnimatedSection from '../Animated/AnimatedSection'; // Componente de seção animada
@@ -231,18 +231,33 @@ const Footer = () => {
                                 {translations[language].socialMedia}
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-                                {[Facebook, Twitter, LinkedIn, YouTube, Pinterest, Instagram].map((Icon, index) => (
-                                    <IconButton
-                                        key={index}
-                                        href="#"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        color="inherit"
-                                        aria-label={Icon.name}
-                                    >
-                                        <Icon />
-                                    </IconButton>
-                                ))}
+                                <IconButton
+                                    href="https://web.facebook.com/cmarqxsp/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    color="inherit"
+                                    aria-label="Facebook"
+                                >
+                                    <Facebook />
+                                </IconButton>
+                                <IconButton
+                                    href="https://www.youtube.com/@cmarqx"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    color="inherit"
+                                    aria-label="YouTube"
+                                >
+                                    <YouTube />
+                                </IconButton>
+                                <IconButton
+                                    href="https://www.instagram.com/cmarqximoveis/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    color="inherit"
+                                    aria-label="Instagram"
+                                >
+                                    <Instagram />
+                                </IconButton>
                             </Box>
                         </Grid>
 
@@ -269,6 +284,7 @@ const Footer = () => {
                         </Grid>
                     </Grid>
                 </AnimatedSection>
+
 
                 {/* Segunda linha: 3 elementos */}
                 <AnimatedSection animation="fade-up" delay="200">

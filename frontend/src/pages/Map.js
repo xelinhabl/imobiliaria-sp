@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { GoogleMap, LoadScript, Marker } from "@react-google-maps/api";
 
-const Map = ({ endereco }) => {
+const Map = ({ endereco, logradouro, numero, latitude, longitude }) => {
   const [coordenadas, setCoordenadas] = useState({ lat: -23.5505, lng: -46.6333 }); // Coordenadas padrão (São Paulo)
   const [erro, setErro] = useState(null); // Estado para armazenar erros
   const [carregando, setCarregando] = useState(false); // Estado para indicar carregamento
 
   useEffect(() => {
-    if (!endereco || endereco.trim() === "") {
-      setErro("Endereço não fornecido.");
-      return;
-    }
-
     const controller = new AbortController();
     const { signal } = controller;
 
@@ -20,9 +15,23 @@ const Map = ({ endereco }) => {
       setErro(null);
 
       try {
+        let query = "";
+
+        if (logradouro && numero) {
+          query = `${logradouro}, ${numero}`;
+        } else if (latitude && longitude) {
+          setCoordenadas({ lat: latitude, lng: longitude });
+          setCarregando(false);
+          return;
+        } else if (endereco && endereco.trim() !== "") {
+          query = endereco;
+        } else {
+          throw new Error("Informações insuficientes para localizar o endereço.");
+        }
+
         const response = await fetch(
           `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-            endereco
+            query
           )}&key=AIzaSyAduCVtekC9pPo89fNcser4_IAzF8SCHRQ`,
           { signal }
         );
@@ -54,7 +63,7 @@ const Map = ({ endereco }) => {
     geocodificarEndereco();
 
     return () => controller.abort(); // Cancela a requisição ao desmontar o componente
-  }, [endereco]);
+  }, [endereco, logradouro, numero, latitude, longitude]);
 
   return (
     <LoadScript googleMapsApiKey="AIzaSyAduCVtekC9pPo89fNcser4_IAzF8SCHRQ">

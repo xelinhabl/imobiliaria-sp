@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import {
   Card,
   CardContent,
@@ -14,14 +14,17 @@ import {
 import BedIcon from "@mui/icons-material/Bed";
 import BathtubIcon from "@mui/icons-material/Bathtub";
 import CropSquareIcon from "@mui/icons-material/CropSquare";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
+import HomeIcon from "@mui/icons-material/Home";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import ArrowBackIosIcon from "@mui/icons-material/ArrowBackIos";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import { keyframes } from "@emotion/react";
-import AnimatedSection from '../Animated/AnimatedSection'; // Componente de seção animada
-import { useNavigate } from "react-router-dom"; // Importe useNavigate
+import AnimatedSection from '../Animated/AnimatedSection';
+import { useNavigate } from "react-router-dom";
+import { ThemeContext } from "../../context/ThemeContext";
 
 // Animação de fade-in
 const fadeIn = keyframes`
@@ -63,8 +66,24 @@ const formatarValor = (valor) => {
   }).format(valor);
 };
 
+// Função para verificar se é um lançamento
+const isLancamento = (imovel) => {
+  return imovel.Tipologias && imovel.Fase;
+};
+
 const ImoveisList = ({ imoveis, loading }) => {
-  const navigate = useNavigate(); // Hook para navegação
+  const navigate = useNavigate();
+  const { isDarkMode } = useContext(ThemeContext);
+
+  // Cores dinâmicas com base no tema
+  const colors = {
+    primary: isDarkMode ? "#90caf9" : "#1976d2",
+    secondary: isDarkMode ? "#f48fb1" : "#ff4081",
+    background: isDarkMode ? "#121212" : "#f5f5f5",
+    text: isDarkMode ? "#ffffff" : "#333333",
+    accent: isDarkMode ? "#69f0ae" : "#00c853",
+    error: isDarkMode ? "#ef5350" : "#d32f2f",
+  };
 
   // Agrupar imóveis por tipo
   const imoveisPorTipo = imoveis.reduce((acc, imovel) => {
@@ -107,17 +126,9 @@ const ImoveisList = ({ imoveis, loading }) => {
     ],
   });
 
-  // Conjunto para armazenar chaves únicas de imóveis já exibidos
-  const imoveisExibidos = new Set();
-
-  // Função para gerar uma chave única com base no ID e no título do imóvel
-  const gerarChaveUnica = (imovel) => {
-    return `${imovel.Id}-${imovel.Titulo}`;
-  };
-
   // Função para navegar para a página de detalhes do imóvel
   const handleCardClick = (imovelId) => {
-    navigate(`/imovel/${imovelId}`); // Navega para a rota de detalhes do imóvel
+    navigate(`/imovel/${imovelId}`);
   };
 
   return (
@@ -128,7 +139,7 @@ const ImoveisList = ({ imoveis, loading }) => {
             {[...Array(6)].map((_, index) => (
               <Grid item xs={12} sm={6} md={4} key={index}>
                 <Card>
-                  <Skeleton variant="rectangular" height={400} /> {/* Altura fixa para o skeleton */}
+                  <Skeleton variant="rectangular" height={400} />
                   <CardContent>
                     <Skeleton variant="text" width="80%" />
                     <Skeleton variant="text" width="60%" />
@@ -143,43 +154,38 @@ const ImoveisList = ({ imoveis, loading }) => {
         Object.entries(imoveisPorTipo).map(([tipo, imoveisDoTipo], index) => (
           <AnimatedSection key={tipo} animation="fade-up" delay={`${(index + 1) * 100}`}>
             <Box sx={{ mb: 4, animation: `${fadeIn} 0.5s ease-in-out` }}>
-              <Typography variant="h5" component="h3" gutterBottom sx={{ mb: 2 }}>
+              <Typography variant="h5" component="h3" gutterBottom sx={{ mb: 2, color: colors.text }}>
                 {tipo}
               </Typography>
-              <Divider sx={{ mb: 3 }} />
+              <Divider sx={{ mb: 3, borderColor: colors.text }} />
               <Slider {...settings(imoveisDoTipo)}>
                 {imoveisDoTipo.slice(0, 5).map((imovel) => {
-                  // Gera uma chave única para o imóvel
-                  const chaveUnica = gerarChaveUnica(imovel);
-
-                  // Verifica se o imóvel já foi exibido
-                  if (imoveisExibidos.has(chaveUnica)) {
-                    return null; // Pula imóveis repetidos
-                  }
-                  imoveisExibidos.add(chaveUnica); // Adiciona a chave ao conjunto de imóveis exibidos
+                  const isLanc = isLancamento(imovel);
+                  const primeiraTipologia = isLanc ? imovel.Tipologias[0] : null;
 
                   return (
-                    <Box key={imovel.Id} sx={{ px: 1, py: 2, height: "100%" }}> {/* Adicionado py: 2 para espaçamento vertical */}
+                    <Box key={imovel.Id} sx={{ px: 1, py: 2, height: "100%" }}>
                       <Card
                         sx={{
-                          height: "450px", // Altura fixa para o card
+                          height: "500px",
                           display: "flex",
                           flexDirection: "column",
                           boxShadow: 3,
                           overflow: "hidden",
-                          cursor: "pointer", // Adiciona cursor de ponteiro para indicar que é clicável
-                          transition: "transform 0.3s ease", // Adiciona transição suave
+                          cursor: "pointer",
+                          transition: "transform 0.3s ease",
                           "&:hover": {
-                            transform: "scale(1.03)", // Efeito de zoom ao passar o mouse
+                            transform: "scale(1.03)",
                           },
+                          backgroundColor: isDarkMode ? "#333" : "#fff",
                         }}
-                        onClick={() => handleCardClick(imovel.Id)} // Redireciona ao clicar no card
+                        onClick={() => handleCardClick(imovel.Id)}
                       >
                         <CardMedia
                           component="img"
                           height="200"
-                          image={imovel.UrlFoto || "/img/default.jpg"}
-                          alt={`Foto do imóvel ${imovel.Titulo}`}
+                          image={isLanc ? imovel.Fotos[0]?.Url : imovel.UrlFoto || "/img/default.jpg"}
+                          alt={`Foto do imóvel ${imovel.Nome || imovel.Titulo}`}
                           sx={{ objectFit: "cover" }}
                         />
                         <CardContent
@@ -187,10 +193,10 @@ const ImoveisList = ({ imoveis, loading }) => {
                             flexGrow: 1,
                             display: "flex",
                             flexDirection: "column",
-                            justifyContent: "center", // Centraliza o conteúdo verticalmente
-                            alignItems: "center", // Centraliza o conteúdo horizontalmente
-                            gap: 2, // Espaçamento entre os elementos internos
-                            padding: "16px", // Espaçamento interno consistente
+                            alignItems: "center", // Centraliza horizontalmente
+                            justifyContent: "center", // Centraliza verticalmente
+                            gap: 1,
+                            padding: "16px",
                             textAlign: "center", // Centraliza o texto
                           }}
                         >
@@ -199,42 +205,55 @@ const ImoveisList = ({ imoveis, loading }) => {
                             component="h3"
                             sx={{
                               fontWeight: "bold",
-                              fontSize: "1rem", // Tamanho da fonte reduzido
+                              fontSize: "1.1rem",
                               display: "-webkit-box",
-                              WebkitLineClamp: 2, // Limita o título a 2 linhas
+                              WebkitLineClamp: 2,
                               WebkitBoxOrient: "vertical",
                               overflow: "hidden",
-                              textOverflow: "ellipsis", // Adiciona "..." ao final do texto cortado
-                              minHeight: "3rem", // Altura mínima para garantir consistência
-                              mb: 1, // Espaçamento abaixo do título
+                              textOverflow: "ellipsis",
+                              minHeight: "3rem",
+                              mb: 1,
+                              color: colors.text,
                             }}
                           >
-                            {imovel.Titulo || "Imóvel sem nome"}
+                            {isLanc ? imovel.Nome : imovel.Titulo || "Imóvel sem nome"}
                           </Typography>
-                          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, alignItems: "center" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <CropSquareIcon sx={{ fontSize: "1rem" }} />
-                              <Typography variant="body2" color="textSecondary">
-                                Área Total: {imovel.AreaTotal}m²
+                          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, width: "100%" }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                              <HomeIcon sx={{ fontSize: "1rem", color: colors.text }} />
+                              <Typography variant="body2" sx={{ color: colors.text }}>
+                                Tipo: {imovel.Tipo}
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <BedIcon sx={{ fontSize: "1rem" }} />
-                              <Typography variant="body2" color="textSecondary">
-                                Dormitórios: {imovel.Dormitorio}
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                              <CropSquareIcon sx={{ fontSize: "1rem", color: colors.text }} />
+                              <Typography variant="body2" sx={{ color: colors.text }}>
+                                Área Total: {isLanc ? primeiraTipologia?.AreaTotal : imovel.AreaTotal}m²
                               </Typography>
                             </Box>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <BathtubIcon sx={{ fontSize: "1rem" }} />
-                              <Typography variant="body2" color="textSecondary">
-                                Banheiros: {imovel.WC}
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                              <BedIcon sx={{ fontSize: "1rem", color: colors.text }} />
+                              <Typography variant="body2" sx={{ color: colors.text }}>
+                                Dormitórios: {isLanc ? primeiraTipologia?.Dormitorios : imovel.Dormitorio}
                               </Typography>
                             </Box>
-                            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                              <BathtubIcon sx={{ fontSize: "1rem", color: colors.text }} />
+                              <Typography variant="body2" sx={{ color: colors.text }}>
+                                Banheiros: {isLanc ? primeiraTipologia?.WC : imovel.WC}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1, justifyContent: "center" }}>
+                              <DirectionsCarIcon sx={{ fontSize: "1rem", color: colors.text }} />
+                              <Typography variant="body2" sx={{ color: colors.text }}>
+                                Vagas: {isLanc ? primeiraTipologia?.Vagas : imovel.Vaga}
+                              </Typography>
+                            </Box>
+                            <Typography variant="body2" sx={{ color: colors.text, mt: 1 }}>
                               <strong>Bairro:</strong> {imovel.Bairro}
                             </Typography>
-                            <Typography variant="body2" sx={{ color: "gold", fontWeight: "bold", mt: 1 }}>
-                              {formatarValor(imovel.ValorVenda)}
+                            <Typography variant="body2" sx={{ color: colors.accent, fontWeight: "bold", mt: 1 }}>
+                              {formatarValor(isLanc ? primeiraTipologia?.Valor : imovel.ValorVenda)}
                             </Typography>
                           </Box>
                         </CardContent>
@@ -245,7 +264,7 @@ const ImoveisList = ({ imoveis, loading }) => {
               </Slider>
               {imoveisDoTipo.length > 5 && (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
-                  <Button variant="contained" color="primary">
+                  <Button variant="contained" sx={{ backgroundColor: colors.primary }}>
                     Ver Mais {tipo}
                   </Button>
                 </Box>

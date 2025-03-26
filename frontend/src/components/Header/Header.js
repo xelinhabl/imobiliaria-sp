@@ -5,7 +5,6 @@ import {
   Button,
   IconButton,
   TextField,
-  Typography,
   Tooltip,
   useMediaQuery,
   useTheme,
@@ -21,23 +20,63 @@ import {
   FaMoon,
   FaFacebook,
   FaInstagram,
-  FaTwitter,
   FaYoutube,
 } from "react-icons/fa";
-import { MdTranslate } from "react-icons/md";
+import { FaFlag, FaFlagUsa, FaFlagCheckered } from "react-icons/fa"; // Importando ícones de bandeiras
 import { LanguageContext } from "../../context/LanguageContext";
-import { ThemeContext } from "../../context/ThemeContext"; // Importe o ThemeContext
+import { ThemeContext } from "../../context/ThemeContext";
 import AnimatedSection from "../../components/Animated/AnimatedSection";
-import { NumericFormat } from "react-number-format"; // Substituição do react-input-mask
+import { NumericFormat } from "react-number-format";
 
 function Header() {
   const navigate = useNavigate();
-  const { language, toggleLanguage } = useContext(LanguageContext);
-  const { isDarkMode, toggleTheme } = useContext(ThemeContext); // Use o ThemeContext
-  const theme = useTheme(); // Acessa o tema do Material-UI
+  const { language, setLanguage } = useContext(LanguageContext);
+  const { isDarkMode, toggleTheme } = useContext(ThemeContext);
+  const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [logoUrl, setLogoUrl] = useState("");
-  const [translations, setTranslations] = useState({});
+
+  // Função para reinicializar o widget do Google Translate
+  const initializeGoogleTranslate = (lang) => {
+    // Verifica se o widget do Google Translate está carregado
+    if (!window.google || !window.google.translate) {
+      console.warn("Google Translate widget not loaded.");
+      return;
+    }
+
+    // Remove o widget existente
+    const googleTranslateElement = document.getElementById("google_translate_element");
+    if (googleTranslateElement) {
+      googleTranslateElement.innerHTML = ""; // Limpa o conteúdo do elemento
+    }
+
+    // Recria o widget com o novo idioma
+    new window.google.translate.TranslateElement(
+      {
+        pageLanguage: "pt",
+        includedLanguages: "pt,en,es",
+        layout: window.google.translate.TranslateElement.InlineLayout.SIMPLE,
+      },
+      "google_translate_element"
+    );
+
+    // Força a seleção do idioma
+    const googleTranslateSelect = document.querySelector(".goog-te-combo");
+    if (googleTranslateSelect) {
+      googleTranslateSelect.value = lang;
+      googleTranslateSelect.dispatchEvent(new Event("change"));
+    }
+  };
+
+  // Função para mudar o idioma
+  const changeLanguage = (lang) => {
+    setLanguage(lang); // Atualiza o idioma no contexto
+
+    // Aguarda um pequeno intervalo antes de reinicializar o widget
+    setTimeout(() => {
+      initializeGoogleTranslate(lang);
+    }, 500); // 500ms de delay
+  };
 
   useEffect(() => {
     const fetchLogo = async () => {
@@ -57,24 +96,7 @@ function Header() {
       }
     };
 
-    const fetchTranslations = async () => {
-      try {
-        const response = await fetch(`http://localhost:8000/api/translations/${language}/`);
-        if (response.ok) {
-          const data = await response.json();
-          setTranslations(data.translations || {});
-        } else {
-          console.warn("Traduções não encontradas. Status:", response.status);
-          setTranslations({});
-        }
-      } catch (error) {
-        console.error("Erro ao buscar as traduções:", error.message);
-        setTranslations({});
-      }
-    };
-
     fetchLogo();
-    fetchTranslations();
   }, [language]);
 
   const handleSearch = (query) => {
@@ -94,8 +116,8 @@ function Header() {
         <AppBar
           position="static"
           sx={{
-            backgroundColor: theme.palette.background.default, // Cor de fundo do tema
-            color: theme.palette.text.primary, // Cor do texto do tema
+            backgroundColor: theme.palette.background.default,
+            color: theme.palette.text.primary,
             boxShadow: "none",
             py: 1,
           }}
@@ -121,9 +143,9 @@ function Header() {
                     variant="text"
                     onClick={() => navigate(route.path)}
                     sx={{
-                      color: theme.palette.text.primary, // Cor do texto do tema
+                      color: theme.palette.text.primary,
                       "&:hover": {
-                        backgroundColor: theme.palette.action.hover, // Cor de hover do tema
+                        backgroundColor: theme.palette.action.hover,
                       },
                     }}
                   >
@@ -134,30 +156,32 @@ function Header() {
 
               {/* Contatos e ícones */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Tooltip title={`Alterar idioma para ${language === "pt" ? "Inglês" : language === "en" ? "Espanhol" : "Português"}`}>
-                  <IconButton
-                    onClick={toggleLanguage}
-                    sx={{
-                      color: theme.palette.text.primary, // Cor do texto do tema
-                      border: `1px solid ${theme.palette.divider}`, // Cor da borda do tema
-                    }}
-                  >
-                    <MdTranslate />
-                    <Typography variant="body1" sx={{ ml: 1 }}>
-                      {language.toUpperCase()}
-                    </Typography>
+                {/* Bandeirinhas para seleção de idioma */}
+                <Tooltip title="Português">
+                  <IconButton onClick={() => changeLanguage("pt")}>
+                    <FaFlag style={{ color: "#006600" }} /> {/* Bandeira do Brasil */}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Inglês">
+                  <IconButton onClick={() => changeLanguage("en")}>
+                    <FaFlagUsa style={{ color: "#0000FF" }} /> {/* Bandeira dos EUA */}
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Espanhol">
+                  <IconButton onClick={() => changeLanguage("es")}>
+                    <FaFlagCheckered style={{ color: "#FF0000" }} /> {/* Bandeira da Espanha */}
                   </IconButton>
                 </Tooltip>
 
                 {/* Botão para alternar o tema */}
                 <IconButton
-                  onClick={toggleTheme} // Use a função toggleTheme do ThemeContext
+                  onClick={toggleTheme}
                   sx={{
-                    color: theme.palette.text.primary, // Cor do texto do tema
-                    border: `1px solid ${theme.palette.divider}`, // Cor da borda do tema
+                    color: theme.palette.text.primary,
+                    border: `1px solid ${theme.palette.divider}`,
                   }}
                 >
-                  {isDarkMode ? <FaSun /> : <FaMoon />} {/* Use isDarkMode para alternar o ícone */}
+                  {isDarkMode ? <FaSun /> : <FaMoon />}
                 </IconButton>
               </Box>
             </Toolbar>
@@ -169,7 +193,7 @@ function Header() {
       <AnimatedSection animation="fade-up" delay="200">
         <Box
           sx={{
-            backgroundColor: theme.palette.background.paper, // Cor de fundo do tema
+            backgroundColor: theme.palette.background.paper,
             py: 2,
           }}
         >
@@ -180,14 +204,14 @@ function Header() {
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder={translations.searchPlaceholder || "Buscar..."}
+                  placeholder="Buscar..."
                   onKeyPress={(e) => {
                     if (e.key === "Enter") {
                       handleSearch(e.target.value);
                     }
                   }}
                   sx={{
-                    backgroundColor: theme.palette.background.paper, // Cor de fundo do tema
+                    backgroundColor: theme.palette.background.paper,
                   }}
                 />
               </Grid>
@@ -199,8 +223,8 @@ function Header() {
                     variant="outlined"
                     startIcon={<FaWhatsapp />}
                     sx={{
-                      color: theme.palette.text.primary, // Cor do texto do tema
-                      borderColor: theme.palette.divider, // Cor da borda do tema
+                      color: theme.palette.text.primary,
+                      borderColor: theme.palette.divider,
                     }}
                     component="a"
                     href="https://wa.me/5511938020000"
@@ -217,8 +241,8 @@ function Header() {
                     variant="outlined"
                     startIcon={<FaPhone />}
                     sx={{
-                      color: theme.palette.text.primary, // Cor do texto do tema
-                      borderColor: theme.palette.divider, // Cor da borda do tema
+                      color: theme.palette.text.primary,
+                      borderColor: theme.palette.divider,
                     }}
                   >
                     <NumericFormat
@@ -238,7 +262,7 @@ function Header() {
       <AnimatedSection animation="fade-up" delay="300">
         <Box
           sx={{
-            backgroundColor: theme.palette.background.default, // Cor de fundo do tema
+            backgroundColor: theme.palette.background.default,
             py: 2,
           }}
         >
@@ -250,9 +274,6 @@ function Header() {
               <IconButton href="https://instagram.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaInstagram />
               </IconButton>
-              <IconButton href="https://twitter.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
-                <FaTwitter />
-              </IconButton>
               <IconButton href="https://youtube.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
                 <FaYoutube />
               </IconButton>
@@ -260,6 +281,9 @@ function Header() {
           </Container>
         </Box>
       </AnimatedSection>
+
+      {/* Widget do Google Translate (oculto) */}
+      <div id="google_translate_element" style={{ display: "none" }}></div>
     </>
   );
 }

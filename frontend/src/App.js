@@ -15,6 +15,8 @@ import AOS from "aos";
 import "aos/dist/aos.css";
 import TodosImoveis from "./pages/TodosImoveis";
 import DetailsImoveis from './pages/DetailsImoveis';
+import UpPage from "./components/UpPage/UpPage";
+import Agendamentos from "./pages/Agendamentos";
 
 const App = () => {
   const { isDarkMode } = useContext(ThemeContext);
@@ -53,10 +55,12 @@ const App = () => {
               <Route path="/contato" element={<Contact />} />
               <Route path="/todos-imoveis" element={<TodosImoveis />} />
               <Route path="/imovel/:id" element={<DetailsImoveis />} />
+              <Route path="/agendamentos" element={<Agendamentos />} />
             </Routes>
             <Footer />
             <WhatsAppButton />
             <CookiesConsent />
+            < UpPage />
           </>
         )}
       </div>

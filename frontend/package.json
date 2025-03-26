@@ -18,7 +18,7 @@
     "aos": "^2.3.4",
     "axios": "^1.8.3",
     "classnames": "^2.5.1",
-    "date-fns": "^4.1.0",
+    "date-fns": "^2.29.3",
     "framer-motion": "^12.5.0",
     "leaflet": "^1.9.4",
     "react": "^19.0.0",
@@ -34,6 +34,7 @@
     "sass": "^1.85.1",
     "slick-carousel": "^1.8.1",
     "styled-components": "^6.1.15",
+    "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
