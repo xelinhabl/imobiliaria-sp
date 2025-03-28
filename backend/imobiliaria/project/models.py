@@ -42,6 +42,11 @@ class NewsletterSubscriber(models.Model):
     email = models.EmailField(unique=True)
     subscribed_at = models.DateTimeField(auto_now_add=True)
 
+    def clean(self):
+        # Validação adicional do email se necessário
+        if not self.email:
+            raise FileExtensionValidator("Email é obrigatório")
+
     def __str__(self):
         return self.email
     
@@ -114,4 +119,42 @@ class BannerCarrossel(models.Model):
     def get_absolute_image_url(self):
         if self.imagem:
             return self.imagem.url
+        return None
+
+class Imovel(models.Model):
+    tipo_choices = [
+        ('CASA', 'Casa'),
+        ('APTO', 'Apartamento'),
+        ('TERRENO', 'Terreno'),
+        ('COMERCIAL', 'Comercial'),
+    ]
+    
+    titulo = models.CharField(max_length=255)
+    descricao = models.TextField()
+    preco = models.DecimalField(max_digits=10, decimal_places=2)
+    tipo = models.CharField(max_length=10, choices=tipo_choices)
+    dormitorios = models.PositiveIntegerField(default=0)
+    banheiros = models.PositiveIntegerField(default=0)
+    vagas = models.PositiveIntegerField(default=0)
+    area_total = models.DecimalField(max_digits=10, decimal_places=2)
+    bairro = models.CharField(max_length=100)
+    cidade = models.CharField(max_length=100)
+    disponivel = models.BooleanField(default=True)
+    data_criacao = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return self.titulo
+
+class ImovelFoto(models.Model):
+    imovel = models.ForeignKey(Imovel, related_name='fotos', on_delete=models.CASCADE)
+    foto = models.ImageField(upload_to='imoveis/')
+    ordem = models.PositiveIntegerField(default=0)
+    
+    class Meta:
+        ordering = ['ordem']
+    
+    @property
+    def foto_url(self):
+        if self.foto and hasattr(self.foto, 'url'):
+            return self.foto.url
         return None

@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Imovel, Configuracao, About, BannerCarrossel
+from .models import Imovel, Configuracao, About, BannerCarrossel, NewsletterSubscriber
 from .serializers import ImovelSerializer, NewsletterSubscriberSerializer, CallRequestSerializer, AboutSerializer, ContactSerializer, AgendamentoSerializer, BannerCarrosselSerializer
 from django.http import JsonResponse
 from django.conf import settings
@@ -57,10 +57,22 @@ class ContactView(View):
     
 class NewsletterView(APIView):
     def post(self, request):
-        serializer = NewsletterSubscriberSerializer(data=request.data)
+        # Garanta que estamos pegando o email do corpo da requisição
+        email = request.data.get('email')
+        if not email:
+            return Response({"error": "Email é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Verifique se o email já existe
+        if NewsletterSubscriber.objects.filter(email=email).exists():
+            return Response({"error": "Email já cadastrado"}, status=status.HTTP_400_BAD_REQUEST)
+            
+        serializer = NewsletterSubscriberSerializer(data={'email': email})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        # Log detalhado dos erros de validação
+        print("Serializer errors:", serializer.errors)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class CallRequestView(APIView):

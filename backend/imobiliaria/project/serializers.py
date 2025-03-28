@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Configuracao, NewsletterSubscriber, Imovel, CallRequest, About, Contact, Agendamento, BannerCarrossel
+from .models import Configuracao, NewsletterSubscriber, Imovel, CallRequest, About, Contact, Agendamento, BannerCarrossel, ImovelFoto
 
 class NewsletterSubscriberSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,3 +64,23 @@ class BannerCarrosselSerializer(serializers.ModelSerializer):
 
     def get_imagem_url(self, obj):
         return obj.imagem_url
+    
+class ImovelFotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ImovelFoto
+        fields = ['foto_url', 'ordem']
+
+class ImovelSerializer(serializers.ModelSerializer):
+    fotos = ImovelFotoSerializer(many=True, read_only=True)
+    status = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Imovel
+        fields = [
+            'id', 'titulo', 'descricao', 'preco', 'tipo',
+            'dormitorios', 'banheiros', 'vagas', 'area_total',
+            'bairro', 'cidade', 'disponivel', 'fotos', 'status'
+        ]
+    
+    def get_status(self, obj):
+        return "Disponível" if obj.disponivel else "Indisponível"
