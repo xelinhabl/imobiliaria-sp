@@ -12,6 +12,7 @@ import {
   AppBar,
   Toolbar,
   Grid,
+  Skeleton,
 } from "@mui/material";
 import {
   FaWhatsapp,
@@ -21,12 +22,20 @@ import {
   FaFacebook,
   FaInstagram,
   FaYoutube,
+  FaFlag,
+  FaFlagUsa,
+  FaFlagCheckered,
 } from "react-icons/fa";
-import { FaFlag, FaFlagUsa, FaFlagCheckered } from "react-icons/fa"; // Importando ícones de bandeiras
 import { LanguageContext } from "../../context/LanguageContext";
 import { ThemeContext } from "../../context/ThemeContext";
 import AnimatedSection from "../../components/Animated/AnimatedSection";
 import { NumericFormat } from "react-number-format";
+import { motion } from "framer-motion";
+import { useSigaviApi } from "../../services/api";
+
+// Componente de botão animado
+const AnimatedButton = motion(Button);
+const AnimatedIconButton = motion(IconButton);
 
 function Header() {
   const navigate = useNavigate();
@@ -34,23 +43,41 @@ function Header() {
   const { isDarkMode, toggleTheme } = useContext(ThemeContext);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const { fetchLogo } = useSigaviApi();
   const [logoUrl, setLogoUrl] = useState("");
+  const [loadingLogo, setLoadingLogo] = useState(true);
 
-  // Função para reinicializar o widget do Google Translate
+  // Função para formatar a URL da logo baseada no ambiente
+  const formatLogoUrl = (url) => {
+    if (!url) return "/default-logo.png";
+    
+    // Se a URL já for absoluta (começa com http), retorna como está
+    if (url.startsWith('http')) {
+      return url;
+    }
+    
+    // Configurações de ambiente
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const backendUrl = isDevelopment 
+      ? 'http://127.0.0.1:8000' 
+      : process.env.REACT_APP_BACKEND_URL || '';
+    
+    // Remove barras duplicadas entre a URL base e o caminho
+    return `${backendUrl}${url.startsWith('/') ? url : `/${url}`}`;
+  };
+
+  // Inicializa o Google Translate
   const initializeGoogleTranslate = (lang) => {
-    // Verifica se o widget do Google Translate está carregado
     if (!window.google || !window.google.translate) {
       console.warn("Google Translate widget not loaded.");
       return;
     }
 
-    // Remove o widget existente
     const googleTranslateElement = document.getElementById("google_translate_element");
     if (googleTranslateElement) {
-      googleTranslateElement.innerHTML = ""; // Limpa o conteúdo do elemento
+      googleTranslateElement.innerHTML = "";
     }
 
-    // Recria o widget com o novo idioma
     new window.google.translate.TranslateElement(
       {
         pageLanguage: "pt",
@@ -60,44 +87,37 @@ function Header() {
       "google_translate_element"
     );
 
-    // Força a seleção do idioma
     const googleTranslateSelect = document.querySelector(".goog-te-combo");
     if (googleTranslateSelect) {
-      googleTranslateSelect.value = lang;
+      googleTranslateSelect.value = language;
       googleTranslateSelect.dispatchEvent(new Event("change"));
     }
   };
 
-  // Função para mudar o idioma
-  const changeLanguage = (lang) => {
-    setLanguage(lang); // Atualiza o idioma no contexto
-
-    // Aguarda um pequeno intervalo antes de reinicializar o widget
+  const changeLanguage = (language) => {
+    setLanguage(language);
     setTimeout(() => {
-      initializeGoogleTranslate(lang);
-    }, 500); // 500ms de delay
+      initializeGoogleTranslate(language);
+    }, 500);
   };
 
   useEffect(() => {
-    const fetchLogo = async () => {
+    const loadLogo = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/logo/");
-        const data = await response.json();
-        if (data.logoUrl) {
-          const logoName = data.logoUrl.split("/logos/")[1];
-          const baseUrl = "http://127.0.0.1:8000/media/logos/";
-          setLogoUrl(`${baseUrl}${logoName}`);
-        } else {
-          setLogoUrl(null);
+        setLoadingLogo(true);
+        const logoData = await fetchLogo();
+        if (logoData && logoData.logoUrl) {
+          setLogoUrl(formatLogoUrl(logoData.logoUrl));
         }
       } catch (error) {
-        console.error("Erro ao buscar a logo:", error);
-        setLogoUrl(null);
+        console.error("Error loading logo:", error);
+      } finally {
+        setLoadingLogo(false);
       }
     };
 
-    fetchLogo();
-  }, [language]);
+    loadLogo();
+  }, [fetchLogo]);
 
   const handleSearch = (query) => {
     navigate(`/search?q=${query}`);
@@ -109,6 +129,54 @@ function Header() {
     { path: "/contato", name: "Contato" },
     { path: "/todos-imoveis", name: "Todos os Imóveis" },
   ];
+
+  // Variantes de animação
+  const buttonVariants = {
+    hover: {
+      y: -3,
+      scale: 1.05,
+      boxShadow: "0px 5px 15px rgba(0,0,0,0.3)",
+      transition: { duration: 0.3, type: "spring", stiffness: 300 }
+    },
+    tap: {
+      scale: 0.95,
+      boxShadow: "0px 2px 5px rgba(0,0,0,0.2)"
+    }
+  };
+
+  const iconVariants = {
+    hover: {
+      rotateY: 180,
+      scale: 1.1,
+      transition: { duration: 0.5 }
+    },
+    tap: {
+      scale: 0.9
+    }
+  };
+
+  const socialIconVariants = {
+    hover: {
+      y: -5,
+      scale: 1.2,
+      rotate: [0, 10, -10, 0],
+      transition: { duration: 0.5 }
+    },
+    tap: {
+      scale: 0.8
+    }
+  };
+
+  const flagVariants = {
+    hover: {
+      rotateY: 360,
+      scale: 1.2,
+      transition: { duration: 0.8 }
+    },
+    tap: {
+      scale: 0.9
+    }
+  };
 
   return (
     <>
@@ -124,72 +192,94 @@ function Header() {
         >
           <Container maxWidth="lg">
             <Toolbar disableGutters>
-              {/* Logotipo */}
               <Box sx={{ flexGrow: 1, display: "flex", alignItems: "center" }}>
                 <Link to="/">
-                  <img
-                    src={logoUrl || undefined}
-                    alt="Logo da Empresa"
-                    style={{ height: isMobile ? "40px" : "50px" }}
-                  />
+                  {loadingLogo ? (
+                    <Skeleton 
+                      variant="rectangular" 
+                      width={isMobile ? 120 : 150} 
+                      height={isMobile ? 40 : 50} 
+                    />
+                  ) : (
+                    <motion.img
+                      src={logoUrl || "/default-logo.png"}
+                      alt="Logo da Empresa"
+                      style={{ height: isMobile ? "40px" : "50px" }}
+                      whileHover={{ rotate: [0, -5, 5, 0] }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  )}
                 </Link>
               </Box>
 
-              {/* Links de navegação */}
               <Box sx={{ display: { xs: "none", md: "flex" }, gap: 2 }}>
                 {appRoutes.map((route, index) => (
-                  <Button
+                  <AnimatedButton
                     key={index}
                     variant="text"
                     onClick={() => navigate(route.path)}
                     sx={{
                       color: theme.palette.text.primary,
-                      "&:hover": {
-                        backgroundColor: theme.palette.action.hover,
-                      },
                     }}
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
                     {route.name}
-                  </Button>
+                  </AnimatedButton>
                 ))}
               </Box>
 
-              {/* Contatos e ícones */}
               <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                {/* Bandeirinhas para seleção de idioma */}
                 <Tooltip title="Português">
-                  <IconButton onClick={() => changeLanguage("pt")}>
-                    <FaFlag style={{ color: "#006600" }} /> {/* Bandeira do Brasil */}
-                  </IconButton>
+                  <AnimatedIconButton 
+                    onClick={() => changeLanguage("pt")}
+                    variants={flagVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                  >
+                    <FaFlag style={{ color: "#006600" }} />
+                  </AnimatedIconButton>
                 </Tooltip>
                 <Tooltip title="Inglês">
-                  <IconButton onClick={() => changeLanguage("en")}>
-                    <FaFlagUsa style={{ color: "#0000FF" }} /> {/* Bandeira dos EUA */}
-                  </IconButton>
+                  <AnimatedIconButton 
+                    onClick={() => changeLanguage("en")}
+                    variants={flagVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                  >
+                    <FaFlagUsa style={{ color: "#0000FF" }} />
+                  </AnimatedIconButton>
                 </Tooltip>
                 <Tooltip title="Espanhol">
-                  <IconButton onClick={() => changeLanguage("es")}>
-                    <FaFlagCheckered style={{ color: "#FF0000" }} /> {/* Bandeira da Espanha */}
-                  </IconButton>
+                  <AnimatedIconButton 
+                    onClick={() => changeLanguage("es")}
+                    variants={flagVariants}
+                    whileHover="hover"
+                    whileTap="tap"
+                  >
+                    <FaFlagCheckered style={{ color: "#FF0000" }} />
+                  </AnimatedIconButton>
                 </Tooltip>
 
-                {/* Botão para alternar o tema */}
-                <IconButton
+                <AnimatedIconButton
                   onClick={toggleTheme}
                   sx={{
                     color: theme.palette.text.primary,
                     border: `1px solid ${theme.palette.divider}`,
                   }}
+                  variants={iconVariants}
+                  whileHover="hover"
+                  whileTap="tap"
                 >
                   {isDarkMode ? <FaSun /> : <FaMoon />}
-                </IconButton>
+                </AnimatedIconButton>
               </Box>
             </Toolbar>
           </Container>
         </AppBar>
       </AnimatedSection>
 
-      {/* Barra de busca e contatos */}
       <AnimatedSection animation="fade-up" delay="200">
         <Box
           sx={{
@@ -199,27 +289,27 @@ function Header() {
         >
           <Container maxWidth="lg">
             <Grid container spacing={2} alignItems="center">
-              {/* Busca */}
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  placeholder="Buscar..."
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter") {
-                      handleSearch(e.target.value);
-                    }
-                  }}
-                  sx={{
-                    backgroundColor: theme.palette.background.paper,
-                  }}
-                />
+                <motion.div whileHover={{ scale: 1.01 }}>
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    placeholder="Buscar..."
+                    onKeyPress={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearch(e.target.value);
+                      }
+                    }}
+                    sx={{
+                      backgroundColor: theme.palette.background.paper,
+                    }}
+                  />
+                </motion.div>
               </Grid>
 
-              {/* Contatos */}
               <Grid item xs={12} md={6}>
                 <Box sx={{ display: "flex", gap: 2, justifyContent: { xs: "center", md: "flex-end" } }}>
-                  <Button
+                  <AnimatedButton
                     variant="outlined"
                     startIcon={<FaWhatsapp />}
                     sx={{
@@ -230,27 +320,33 @@ function Header() {
                     href="https://wa.me/5511938020000"
                     target="_blank"
                     rel="noopener noreferrer"
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
                     <NumericFormat
                       value="11938020000"
                       displayType="text"
                       format="(##) #####-####"
                     />
-                  </Button>
-                  <Button
+                  </AnimatedButton>
+                  <AnimatedButton
                     variant="outlined"
                     startIcon={<FaPhone />}
                     sx={{
                       color: theme.palette.text.primary,
                       borderColor: theme.palette.divider,
                     }}
+                    variants={buttonVariants}
+                    whileHover="hover"
+                    whileTap="tap"
                   >
                     <NumericFormat
                       value="1138884500"
                       displayType="text"
                       format="(##) ####-####"
                     />
-                  </Button>
+                  </AnimatedButton>
                 </Box>
               </Grid>
             </Grid>
@@ -258,7 +354,6 @@ function Header() {
         </Box>
       </AnimatedSection>
 
-      {/* Redes sociais */}
       <AnimatedSection animation="fade-up" delay="300">
         <Box
           sx={{
@@ -268,21 +363,41 @@ function Header() {
         >
           <Container maxWidth="lg">
             <Box sx={{ display: "flex", justifyContent: "center", gap: 2 }}>
-              <IconButton href="https://facebook.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
+              <AnimatedIconButton 
+                href="https://web.facebook.com/cmarqxsp/" 
+                target="_blank" 
+                sx={{ color: theme.palette.text.primary }}
+                variants={socialIconVariants}
+                whileHover="hover"
+                whileTap="tap"
+              >
                 <FaFacebook />
-              </IconButton>
-              <IconButton href="https://instagram.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
+              </AnimatedIconButton>
+              <AnimatedIconButton 
+                href="https://www.instagram.com/cmarqximoveis/" 
+                target="_blank" 
+                sx={{ color: theme.palette.text.primary }}
+                variants={socialIconVariants}
+                whileHover="hover"
+                whileTap="tap"
+              >
                 <FaInstagram />
-              </IconButton>
-              <IconButton href="https://youtube.com" target="_blank" sx={{ color: theme.palette.text.primary }}>
+              </AnimatedIconButton>
+              <AnimatedIconButton 
+                href="https://www.youtube.com/@cmarqx" 
+                target="_blank" 
+                sx={{ color: theme.palette.text.primary }}
+                variants={socialIconVariants}
+                whileHover="hover"
+                whileTap="tap"
+              >
                 <FaYoutube />
-              </IconButton>
+              </AnimatedIconButton>
             </Box>
           </Container>
         </Box>
       </AnimatedSection>
 
-      {/* Widget do Google Translate (oculto) */}
       <div id="google_translate_element" style={{ display: "none" }}></div>
     </>
   );

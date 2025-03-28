@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   Card,
   CardContent,
@@ -22,7 +21,11 @@ import {
   IconButton,
   TextField,
   Alert,
-  Chip
+  Chip,
+  ToggleButton,
+  ToggleButtonGroup,
+  Badge,
+  Tooltip
 } from "@mui/material";
 import {
   Bed as BedIcon,
@@ -32,26 +35,21 @@ import {
   CalendarToday as CalendarIcon,
   Phone as PhoneIcon,
   ArrowBackIos as ArrowBackIosIcon,
-  ArrowForwardIos as ArrowForwardIosIcon
+  ArrowForwardIos as ArrowForwardIosIcon,
+  FilterAlt as FilterIcon,
+  Clear as ClearIcon,
+  Star as StarIcon,
+  Info as InfoIcon
 } from "@mui/icons-material";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import { motion } from "framer-motion";
 import { ThemeContext } from "../context/ThemeContext";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { format } from "date-fns";
-
-const getColors = (isDarkMode) => ({
-  primary: isDarkMode ? "#90caf9" : "#1976d2",
-  secondary: isDarkMode ? "#f48fb1" : "#ff4081",
-  background: isDarkMode ? "#121212" : "#f5f5f5",
-  text: isDarkMode ? "#ffffff" : "#333333",
-  accent: isDarkMode ? "#69f0ae" : "#00c853",
-  error: isDarkMode ? "#ef5350" : "#d32f2f",
-});
+import { useSigaviApi } from "../services/api";
 
 const CustomArrow = ({ direction, onClick }) => (
   <IconButton
@@ -60,11 +58,11 @@ const CustomArrow = ({ direction, onClick }) => (
       position: "absolute",
       top: "50%",
       transform: "translateY(-50%)",
-      zIndex: 1,
-      backgroundColor: "rgba(0, 0, 0, 0.5)",
+      zIndex: 2,
+      backgroundColor: "rgba(0, 0, 0, 0.7)",
       color: "#fff",
       "&:hover": {
-        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
       },
       left: direction === "left" ? 10 : "auto",
       right: direction === "right" ? 10 : "auto",
@@ -74,15 +72,47 @@ const CustomArrow = ({ direction, onClick }) => (
   </IconButton>
 );
 
+const CustomDots = ({ total, current }) => (
+  <Box sx={{
+    position: 'absolute',
+    bottom: 10,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    color: '#fff',
+    padding: '4px 12px',
+    borderRadius: '12px',
+    fontSize: '14px',
+    zIndex: 2,
+    fontWeight: 'bold'
+  }}>
+    {current + 1}/{total}
+  </Box>
+);
+
+const getColors = (isDarkMode) => ({
+  primary: isDarkMode ? "#90caf9" : "#1976d2",
+  secondary: isDarkMode ? "#f48fb1" : "#ff4081",
+  background: isDarkMode ? "#121212" : "#f5f5f5",
+  paper: isDarkMode ? "#1e1e1e" : "#ffffff",
+  text: isDarkMode ? "#ffffff" : "#333333",
+  textSecondary: isDarkMode ? "#b0b0b0" : "#666666",
+  accent: isDarkMode ? "#69f0ae" : "#00c853",
+  error: isDarkMode ? "#ef5350" : "#d32f2f",
+  divider: isDarkMode ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.12)",
+});
+
 const formatCurrency = (value) => {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
     currency: "BRL",
+    minimumFractionDigits: 2,
   }).format(value || 0);
 };
 
 const formatDate = (date) => {
-  return date?.toLocaleDateString("pt-BR", {
+  if (!date) return "";
+  return date.toLocaleDateString("pt-BR", {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -90,27 +120,15 @@ const formatDate = (date) => {
   });
 };
 
-const normalizeImovelData = (imovel) => {
-  return {
-    ...imovel,
-    Id: imovel.Id,
-    Titulo: imovel.Titulo || imovel.Nome || "Imóvel sem título",
-    ValorVenda: imovel.ValorVenda || imovel.Valor || 0,
-    Dormitorios: imovel.Dormitorios || imovel.Dormitorio || 0,
-    Banheiros: imovel.WC || imovel.Banheiros || 0,
-    Vagas: imovel.Vagas || imovel.Vaga || 0,
-    AreaTotal: imovel.AreaTotal || 0,
-    Bairro: imovel.Bairro || "",
-    Cidade: imovel.Cidade || "",
-    Fotos: imovel.Fotos || [],
-    Tipo: imovel.Tipo || (imovel.Empreendimento ? "Lançamento" : "Imóvel")
-  };
-};
-
 const TodosImoveis = () => {
   const navigate = useNavigate();
   const { isDarkMode } = useContext(ThemeContext);
   const colors = getColors(isDarkMode);
+  const { 
+    fetchImoveis, 
+    fetchLancamentos, 
+    error: apiError,
+  } = useSigaviApi();
 
   // Estados
   const [filtroPrincipal, setFiltroPrincipal] = useState("Todos");
@@ -122,117 +140,301 @@ const TodosImoveis = () => {
     vagas: "",
     areaMin: 0,
     areaMax: 500,
+    tipoOperacao: "",
+    destaque: false,
   });
-  const [imoveis, setImoveis] = useState([]);
-  const [lancamentos, setLancamentos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [imoveisData, setImoveisData] = useState({
+    imoveis: [],
+    lancamentos: [],
+    loading: true,
+    usingCache: false
+  });
+  const [agendamentoState, setAgendamentoState] = useState({
+    open: false,
+    etapa: "selecao",
+    imovel: null,
+    data: null,
+    hora: "",
+    error: null
+  });
   const [paginaAtual, setPaginaAtual] = useState(1);
-  const [imoveisPorPagina] = useState(6);
-  const [openAgendamento, setOpenAgendamento] = useState(false);
-  const [dataVisita, setDataVisita] = useState(null);
-  const [horaVisita, setHoraVisita] = useState("");
-  const [etapaAgendamento, setEtapaAgendamento] = useState("selecao");
-  const [selectedImovel, setSelectedImovel] = useState(null);
-  const [agendamentoError, setAgendamentoError] = useState(null);
-  const [loadingImages, setLoadingImages] = useState({});
+  const [currentSlideIndex, setCurrentSlideIndex] = useState({});
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  const horariosDisponiveis = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+  const horariosDisponiveis = useMemo(() => 
+    ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'], 
+    []
+  );
+  
+  const imoveisPorPagina = 6;
 
-  // Configurações do carrossel
-  const settingsFotos = {
-    dots: true,
+  // Carregamento dos dados
+  useEffect(() => {
+    let mounted = true;
+    
+    const loadData = async () => {
+      try {
+        if (mounted) {
+          setImoveisData(prev => ({ ...prev, loading: true, usingCache: true }));
+          
+          const [imoveisData, lancamentosData] = await Promise.all([
+            fetchImoveis().catch(() => []),
+            fetchLancamentos().catch(() => [])
+          ]);
+          
+          if (mounted) {
+            setImoveisData({
+              imoveis: imoveisData || [],
+              lancamentos: lancamentosData || [],
+              loading: false,
+              usingCache: false
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar imóveis:", error);
+        if (mounted) {
+          setImoveisData(prev => ({ ...prev, loading: false }));
+        }
+      }
+    };
+  
+    loadData();
+    
+    return () => { mounted = false; };
+  }, [fetchImoveis, fetchLancamentos]);
+
+  // Configuração do carrossel
+  const getCarouselSettings = useCallback((imovelId, totalFotos) => ({
+    dots: false,
     infinite: true,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
+    arrows: true,
     prevArrow: <CustomArrow direction="left" />,
     nextArrow: <CustomArrow direction="right" />,
-  };
+    beforeChange: (current, next) => setCurrentSlideIndex(prev => ({
+      ...prev,
+      [imovelId]: next
+    })),
+    customPaging: () => (
+      <CustomDots total={totalFotos} current={currentSlideIndex[imovelId] || 0} />
+    )
+  }), [currentSlideIndex]);
 
-  // Buscar dados
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const authParams = new URLSearchParams();
-        authParams.append("username", "integracao");
-        authParams.append("password", "HScNneuN6PKxDq0");
-        authParams.append("grant_type", "password");
+  // Filtragem e ordenação
+  const filteredImoveis = useMemo(() => {
+    const { imoveis, lancamentos } = imoveisData;
+    
+    let allImoveis = [
+      ...imoveis,
+      ...lancamentos
+    ];
 
-        const authResponse = await axios.post(
-          "https://cmarqx.sigavi360.com.br/Sigavi/api/Acesso/Token",
-          authParams,
-          { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-        );
-
-        const token = authResponse.data.access_token;
-
-        const [imoveisResponse, lancamentosResponse] = await Promise.all([
-          axios.post("https://cmarqx.sigavi360.com.br/Sigavi/Api/Site/BuscaEmpreendimento", {}, {
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
-          }),
-          axios.post("https://cmarqx.sigavi360.com.br/Sigavi/Api/Site/Busca", {}, {
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }
-          })
-        ]);
-
-        const imoveisUnicos = imoveisResponse.data.reduce((acc, imovel) => {
-          if (!acc.some(item => item.Id === imovel.Id)) acc.push(imovel);
-          return acc;
-        }, []);
-
-        setImoveis(imoveisUnicos);
-        setLancamentos(lancamentosResponse.data);
-      } catch (err) {
-        console.error("Erro ao buscar dados:", err);
-        setError("Falha ao carregar os dados. Tente recarregar a página.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  // Filtrar imóveis
-  const imoveisFiltrados = (filtroPrincipal === "Lançamentos" ? lancamentos : imoveis)
-    .map(normalizeImovelData)
-    .filter(imovel => {
-      const {
-        bairro,
-        valorMin,
-        valorMax,
-        quartos,
-        vagas,
-        areaMin,
-        areaMax
-      } = filtrosAdicionais;
-
-      return (
-        (!bairro || imovel.Bairro.toLowerCase().includes(bairro.toLowerCase())) &&
-        imovel.ValorVenda >= valorMin &&
-        imovel.ValorVenda <= valorMax &&
-        (!quartos || imovel.Dormitorios >= quartos) &&
-        (!vagas || imovel.Vagas >= vagas) &&
-        imovel.AreaTotal >= areaMin &&
-        imovel.AreaTotal <= areaMax
-      );
+    // Aplicar filtros
+    allImoveis = allImoveis.filter(imovel => {
+      // Filtro principal
+      if (filtroPrincipal === "Lançamentos" && !imovel.isLancamento) return false;
+      if (filtroPrincipal === "Venda" && imovel.TipoOperacao !== "Venda") return false;
+      if (filtroPrincipal === "Locação" && imovel.TipoOperacao !== "Locação") return false;
+      
+      // Filtros adicionais
+      const { bairro, valorMin, valorMax, quartos, vagas, areaMin, areaMax, tipoOperacao, destaque } = filtrosAdicionais;
+      
+      if (bairro && !imovel.Bairro?.toLowerCase().includes(bairro.toLowerCase())) return false;
+      
+      const valorRelevante = imovel.TipoOperacao === "Locação" ? imovel.ValorLocacao : imovel.ValorVenda;
+      if (valorRelevante < valorMin || valorRelevante > valorMax) return false;
+      
+      if (quartos && imovel.Dormitorios < quartos) return false;
+      if (vagas && imovel.Vagas < vagas) return false;
+      if (imovel.AreaTotal < areaMin || imovel.AreaTotal > areaMax) return false;
+      if (tipoOperacao && imovel.TipoOperacao !== tipoOperacao) return false;
+      if (destaque && !imovel.Destaque) return false;
+      
+      return true;
     });
 
+    // Ordenar por destaque primeiro
+    return [...allImoveis].sort((a, b) => {
+      if (a.Destaque && !b.Destaque) return -1;
+      if (!a.Destaque && b.Destaque) return 1;
+      return 0;
+    });
+  }, [imoveisData, filtroPrincipal, filtrosAdicionais]);
+
+  // Opções disponíveis para filtros
+  const availableFilters = useMemo(() => {
+    const options = {
+      bairros: new Set(),
+      minQuartos: Infinity,
+      maxQuartos: 0,
+      minVagas: Infinity,
+      maxVagas: 0,
+      minValor: Infinity,
+      maxValor: 0,
+      minArea: Infinity,
+      maxArea: 0,
+      tipoOperacoes: new Set()
+    };
+
+    filteredImoveis.forEach(imovel => {
+      if (imovel.Bairro) options.bairros.add(imovel.Bairro);
+      if (imovel.Dormitorios) {
+        options.minQuartos = Math.min(options.minQuartos, imovel.Dormitorios);
+        options.maxQuartos = Math.max(options.maxQuartos, imovel.Dormitorios);
+      }
+      if (imovel.Vagas) {
+        options.minVagas = Math.min(options.minVagas, imovel.Vagas);
+        options.maxVagas = Math.max(options.maxVagas, imovel.Vagas);
+      }
+      
+      const valorRelevante = imovel.TipoOperacao === "Locação" ? imovel.ValorLocacao : imovel.ValorVenda;
+      if (valorRelevante) {
+        options.minValor = Math.min(options.minValor, valorRelevante);
+        options.maxValor = Math.max(options.maxValor, valorRelevante);
+      }
+      
+      if (imovel.AreaTotal) {
+        options.minArea = Math.min(options.minArea, imovel.AreaTotal);
+        options.maxArea = Math.max(options.maxArea, imovel.AreaTotal);
+      }
+      if (imovel.TipoOperacao) options.tipoOperacoes.add(imovel.TipoOperacao);
+    });
+
+    return {
+      bairros: Array.from(options.bairros).sort(),
+      minQuartos: options.minQuartos === Infinity ? 0 : options.minQuartos,
+      maxQuartos: options.maxQuartos === 0 ? 5 : options.maxQuartos,
+      minVagas: options.minVagas === Infinity ? 0 : options.minVagas,
+      maxVagas: options.maxVagas === 0 ? 4 : options.maxVagas,
+      minValor: options.minValor === Infinity ? 0 : options.minValor,
+      maxValor: options.maxValor === 0 ? 5000000 : options.maxValor,
+      minArea: options.minArea === Infinity ? 0 : options.minArea,
+      maxArea: options.maxArea === 0 ? 500 : options.maxArea,
+      tipoOperacoes: Array.from(options.tipoOperacoes)
+    };
+  }, [filteredImoveis]);
+
   // Paginação
-  const indiceUltimoImovel = paginaAtual * imoveisPorPagina;
-  const indicePrimeiroImovel = indiceUltimoImovel - imoveisPorPagina;
-  const imoveisPaginaAtual = imoveisFiltrados.slice(indicePrimeiroImovel, indiceUltimoImovel);
-  const totalPaginas = Math.ceil(imoveisFiltrados.length / imoveisPorPagina);
+  const imoveisPaginaAtual = useMemo(() => {
+    const indiceUltimoImovel = paginaAtual * imoveisPorPagina;
+    const indicePrimeiroImovel = indiceUltimoImovel - imoveisPorPagina;
+    return filteredImoveis.slice(indicePrimeiroImovel, indiceUltimoImovel);
+  }, [filteredImoveis, paginaAtual]);
+
+  const totalPaginas = Math.ceil(filteredImoveis.length / imoveisPorPagina);
+
+  // Handlers
+  const handleAbrirAgendamento = useCallback((imovel) => {
+    setAgendamentoState({
+      open: true,
+      etapa: "selecao",
+      imovel,
+      data: null,
+      hora: "",
+      error: null
+    });
+  }, []);
+
+  const handleConfirmarAgendamento = useCallback(() => {
+    const { imovel, data, hora } = agendamentoState;
+    
+    if (!imovel || !data || !hora) {
+      setAgendamentoState(prev => ({ ...prev, error: "Preencha todos os campos" }));
+      return;
+    }
+
+    const agendamentoData = {
+      imovel_id: imovel.id,
+      titulo: imovel.Titulo || "Sem título",
+      valor: imovel.TipoOperacao === "Locação" ? imovel.ValorLocacao : imovel.ValorVenda,
+      bairro: imovel.Bairro || "Não informado",
+      cidade: imovel.Cidade || "Não informado",
+      data_visita: data.toISOString().split('T')[0],
+      hora_visita: hora.replace(':', ''),
+      data_formatada: format(new Date(data), "dd/MM/yyyy"),
+      hora_formatada: hora
+    };
+
+    navigate("/agendamentos", { state: agendamentoData });
+  }, [agendamentoState, navigate]);
+
+  const handleResetFilters = useCallback(() => {
+    setFiltroPrincipal("Todos");
+    setFiltrosAdicionais({
+      bairro: "",
+      valorMin: availableFilters.minValor,
+      valorMax: availableFilters.maxValor,
+      quartos: "",
+      vagas: "",
+      areaMin: availableFilters.minArea,
+      areaMax: availableFilters.maxArea,
+      tipoOperacao: "",
+      destaque: false,
+    });
+    setPaginaAtual(1);
+  }, [availableFilters]);
+
+  const handleFilterChange = useCallback((key, value) => {
+    setFiltrosAdicionais(prev => {
+      const newFilters = { ...prev, [key]: value };
+      
+      // Reset min/max values when neighborhood changes
+      if (key === 'bairro') {
+        const imoveisNoBairro = filteredImoveis.filter(i => 
+          !value || i.Bairro?.toLowerCase().includes(value.toLowerCase())
+        );
+        
+        if (imoveisNoBairro.length > 0) {
+          const minValor = Math.min(...imoveisNoBairro.map(i => 
+            i.TipoOperacao === "Locação" ? i.ValorLocacao : i.ValorVenda
+          ));
+          const maxValor = Math.max(...imoveisNoBairro.map(i => 
+            i.TipoOperacao === "Locação" ? i.ValorLocacao : i.ValorVenda
+          ));
+          const minArea = Math.min(...imoveisNoBairro.map(i => i.AreaTotal));
+          const maxArea = Math.max(...imoveisNoBairro.map(i => i.AreaTotal));
+          
+          newFilters.valorMin = minValor;
+          newFilters.valorMax = maxValor;
+          newFilters.areaMin = minArea;
+          newFilters.areaMax = maxArea;
+        }
+      }
+      
+      return newFilters;
+    });
+    setPaginaAtual(1);
+  }, [filteredImoveis]);
+
+  const activeFilterCount = useMemo(() => {
+    const defaultValues = {
+      bairro: "",
+      quartos: "",
+      vagas: "",
+      tipoOperacao: "",
+      destaque: false,
+      valorMin: availableFilters.minValor,
+      valorMax: availableFilters.maxValor,
+      areaMin: availableFilters.minArea,
+      areaMax: availableFilters.maxArea
+    };
+    
+    return Object.keys(filtrosAdicionais).filter(key => {
+      const value = filtrosAdicionais[key];
+      return value !== defaultValues[key];
+    }).length + (filtroPrincipal !== "Todos" ? 1 : 0);
+  }, [filtrosAdicionais, filtroPrincipal, availableFilters]);
 
   // Componentes
-  const HorarioPicker = () => (
+  const HorarioPicker = useCallback(() => (
     <FormControl fullWidth sx={{ mt: 2 }}>
       <InputLabel>Horário da Visita</InputLabel>
       <Select
-        value={horaVisita}
-        onChange={(e) => setHoraVisita(e.target.value)}
+        value={agendamentoState.hora}
+        onChange={(e) => setAgendamentoState(prev => ({ ...prev, hora: e.target.value }))}
         required
         label="Horário da Visita"
       >
@@ -241,9 +443,9 @@ const TodosImoveis = () => {
         ))}
       </Select>
     </FormControl>
-  );
+  ), [agendamentoState.hora, horariosDisponiveis]);
 
-  const Paginacao = () => (
+  const Paginacao = useCallback(() => (
     <Box sx={{ display: "flex", justifyContent: "center", mt: 4, flexWrap: "wrap" }}>
       {Array.from({ length: totalPaginas }, (_, i) => (
         <Button
@@ -267,51 +469,94 @@ const TodosImoveis = () => {
         </Button>
       ))}
     </Box>
-  );
+  ), [totalPaginas, paginaAtual, colors.primary]);
 
-  const ModalAgendamento = () => (
-    <Dialog open={openAgendamento} onClose={() => setOpenAgendamento(false)} maxWidth="sm" fullWidth>
+  const ModalAgendamento = useCallback(() => (
+    <Dialog 
+      open={agendamentoState.open} 
+      onClose={() => setAgendamentoState(prev => ({ ...prev, open: false }))} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          backgroundColor: colors.paper,
+          color: colors.text,
+          borderRadius: 3
+        }
+      }}
+    >
       <DialogTitle sx={{ pb: 2 }}>
         <Typography variant="h6">
-          {etapaAgendamento === "selecao" ? "Agendar Visita" : "Confirmar Agendamento"}
+          {agendamentoState.etapa === "selecao" ? "Agendar Visita" : "Confirmar Agendamento"}
         </Typography>
-        <Typography variant="subtitle2" color="text.secondary">
-          {selectedImovel?.Titulo}
+        <Typography variant="subtitle2" color="textSecondary">
+          {agendamentoState.imovel?.Titulo || "Imóvel sem título"}
         </Typography>
       </DialogTitle>
       
       <DialogContent>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          {etapaAgendamento === "selecao" ? (
+          {agendamentoState.etapa === "selecao" ? (
             <Box sx={{ mt: 2 }}>
-              {agendamentoError && <Alert severity="error" sx={{ mb: 2 }}>{agendamentoError}</Alert>}
+              {agendamentoState.error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  {agendamentoState.error}
+                </Alert>
+              )}
               
               <DatePicker
                 label="Data da visita"
-                value={dataVisita}
-                onChange={setDataVisita}
-                minDate={new Date("DD/MM/YYYY")}
-                inputFormat="DD/MM/YYYY"
+                value={agendamentoState.data}
+                onChange={(newValue) => setAgendamentoState(prev => ({ ...prev, data: newValue }))}
+                minDate={new Date()}
+                inputFormat="dd/MM/yyyy"
                 shouldDisableDate={(date) => date.getDay() === 0 || date.getDay() === 6}
                 renderInput={(params) => (
-                  <TextField {...params} fullWidth sx={{ mb: 2 }} helperText="Apenas dias úteis" />
+                  <TextField 
+                    {...params} 
+                    fullWidth 
+                    sx={{ mb: 2 }} 
+                    helperText="Apenas dias úteis" 
+                  />
                 )}
               />
               
               <HorarioPicker />
               
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, pt: 3, mt: 2, borderTop: 1, borderColor: 'divider' }}>
-                <Button variant="outlined" onClick={() => setOpenAgendamento(false)}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'flex-end', 
+                gap: 2, 
+                pt: 3, 
+                mt: 2, 
+                borderTop: 1, 
+                borderColor: colors.divider 
+              }}>
+                <Button 
+                  variant="outlined" 
+                  onClick={() => setAgendamentoState(prev => ({ ...prev, open: false }))}
+                  sx={{
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                    borderRadius: 2
+                  }}
+                >
                   Cancelar
                 </Button>
                 <Button 
                   variant="contained" 
                   onClick={() => {
-                    if (!dataVisita || !horaVisita) {
-                      setAgendamentoError("Selecione data e horário");
+                    if (!agendamentoState.data || !agendamentoState.hora) {
+                      setAgendamentoState(prev => ({ ...prev, error: "Selecione data e horário" }));
                     } else {
-                      setAgendamentoError(null);
-                      setEtapaAgendamento("confirmacao");
+                      setAgendamentoState(prev => ({ ...prev, error: null, etapa: "confirmacao" }));
+                    }
+                  }}
+                  sx={{
+                    backgroundColor: colors.primary,
+                    borderRadius: 2,
+                    '&:hover': {
+                      backgroundColor: colors.secondary
                     }
                   }}
                 >
@@ -324,27 +569,43 @@ const TodosImoveis = () => {
               <Typography variant="h6" gutterBottom>Confirmação de Agendamento</Typography>
               
               <Box sx={{ 
-                backgroundColor: 'rgba(0, 0, 0, 0.04)', 
+                backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)', 
                 p: 3, 
-                borderRadius: 1,
+                borderRadius: 2,
                 mb: 3
               }}>
-                <Typography><strong>Imóvel:</strong> {selectedImovel?.Titulo}</Typography>
-                <Typography><strong>Endereço:</strong> {selectedImovel?.Bairro}, {selectedImovel?.Cidade}</Typography>
-                <Typography><strong>Valor:</strong> {formatCurrency(selectedImovel?.ValorVenda)}</Typography>
-                <Typography><strong>Data:</strong> {formatDate(dataVisita)}</Typography>
-                <Typography><strong>Horário:</strong> {horaVisita}</Typography>
+                <Typography><strong>Imóvel:</strong> {agendamentoState.imovel?.Titulo || "Sem título"}</Typography>
+                <Typography><strong>Endereço:</strong> {agendamentoState.imovel?.Bairro || "Não informado"}, {agendamentoState.imovel?.Cidade || "Não informado"}</Typography>
+                <Typography><strong>Valor:</strong> {formatCurrency(
+                  agendamentoState.imovel?.TipoOperacao === "Locação" 
+                    ? agendamentoState.imovel?.ValorLocacao 
+                    : agendamentoState.imovel?.ValorVenda
+                )}</Typography>
+                <Typography><strong>Data:</strong> {formatDate(agendamentoState.data)}</Typography>
+                <Typography><strong>Horário:</strong> {agendamentoState.hora}</Typography>
               </Box>
               
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
                 Um corretor entrará em contato para confirmar os detalhes.
               </Typography>
               
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                gap: 2, 
+                pt: 2, 
+                borderTop: 1, 
+                borderColor: colors.divider 
+              }}>
                 <Button 
                   variant="outlined" 
-                  onClick={() => setEtapaAgendamento("selecao")}
+                  onClick={() => setAgendamentoState(prev => ({ ...prev, etapa: "selecao" }))}
                   startIcon={<CalendarIcon />}
+                  sx={{
+                    borderColor: colors.primary,
+                    color: colors.primary,
+                    borderRadius: 2
+                  }}
                 >
                   Reagendar
                 </Button>
@@ -352,6 +613,13 @@ const TodosImoveis = () => {
                   variant="contained" 
                   onClick={handleConfirmarAgendamento}
                   startIcon={<PhoneIcon />}
+                  sx={{
+                    backgroundColor: colors.primary,
+                    borderRadius: 2,
+                    '&:hover': {
+                      backgroundColor: colors.secondary
+                    }
+                  }}
                 >
                   Confirmar Visita
                 </Button>
@@ -361,267 +629,406 @@ const TodosImoveis = () => {
         </LocalizationProvider>
       </DialogContent>
     </Dialog>
-  );
-
-  // Handlers
-  const handleAbrirAgendamento = (imovel) => {
-    setSelectedImovel(imovel);
-    setOpenAgendamento(true);
-    setEtapaAgendamento("selecao");
-    setDataVisita(null);
-    setHoraVisita("");
-    setAgendamentoError(null);
-  };
-
-  const handleConfirmarAgendamento = () => {
-    const agendamentoData = {
-      imovel_id: selectedImovel.Id,
-      titulo: selectedImovel.Titulo,
-      valor: selectedImovel.ValorVenda,
-      bairro: selectedImovel.Bairro,
-      cidade: selectedImovel.Cidade,
-      data_visita: dataVisita.toISOString().split('T')[0],
-      hora_visita: horaVisita.replace(':', ''),
-      data_formatada: format(new Date(dataVisita), "DD/MM/yyyy"),
-      hora_formatada: horaVisita
-    };
-  
-    navigate("/agendamentos", { state: agendamentoData });
-  };
-
-  const handleImageLoad = (id) => {
-    setLoadingImages(prev => ({ ...prev, [id]: false }));
-  };
-
-  // Animação
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-  };
+  ), [agendamentoState, colors, isDarkMode, handleConfirmarAgendamento]);
 
   return (
-    <Box sx={{ p: 3, backgroundColor: colors.background, minHeight: '100vh' }}>
-      <Typography variant="h4" component="h1" gutterBottom sx={{ color: colors.text }}>
-        {filtroPrincipal === "Lançamentos" ? "Lançamentos" : "Imóveis Disponíveis"}
-      </Typography>
-      <Divider sx={{ mb: 3, borderColor: colors.text }} />
+    <Box sx={{ 
+      p: { xs: 2, md: 3 }, 
+      backgroundColor: colors.background, 
+      minHeight: '100vh',
+      overflowX: 'hidden'
+    }}>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" component="h1" gutterBottom sx={{ 
+          color: colors.text,
+          fontWeight: 'bold'
+        }}>
+          {filtroPrincipal === "Lançamentos" ? "Lançamentos" : "Imóveis Disponíveis"}
+        </Typography>
+        {filteredImoveis.length > 0 && (
+          <Typography variant="subtitle1" component="p" color="textSecondary">
+            {filteredImoveis.length} imóveis encontrados {imoveisData.usingCache && "(dados do cache)"}
+          </Typography>
+        )}
+      </Box>
+      <Divider sx={{ mb: 3, borderColor: colors.divider }} />
 
       {/* Filtros Principais */}
-      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 3 }}>
-        {["Todos", "Lançamentos", "Venda", "Locação"].map((filtro) => (
-          <Button
-            key={filtro}
-            variant={filtroPrincipal === filtro ? "contained" : "outlined"}
-            onClick={() => {
-              setFiltroPrincipal(filtro);
+      <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 3, alignItems: 'center' }}>
+        <ToggleButtonGroup
+          value={filtroPrincipal}
+          exclusive
+          onChange={(_, newValue) => {
+            if (newValue) {
+              setFiltroPrincipal(newValue);
               setPaginaAtual(1);
-            }}
+              handleFilterChange('bairro', "");
+            }
+          }}
+          aria-label="Filtro principal"
+          sx={{
+            '& .MuiToggleButton-root': {
+              textTransform: 'none',
+              borderColor: colors.primary,
+              color: colors.primary,
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              '&.Mui-selected': {
+                backgroundColor: colors.primary,
+                color: '#fff',
+              },
+              '&:hover': {
+                backgroundColor: isDarkMode ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
+              }
+            }
+          }}
+        >
+          {["Todos", "Lançamentos", "Venda", "Locação"].map((filtro) => (
+            <ToggleButton key={filtro} value={filtro}>
+              {filtro}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            startIcon={<FilterIcon />}
+            endIcon={
+              activeFilterCount > 0 ? (
+                <Badge badgeContent={activeFilterCount} color="primary" />
+              ) : null
+            }
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
             sx={{
               textTransform: 'none',
-              backgroundColor: filtroPrincipal === filtro ? colors.primary : 'transparent',
-              color: filtroPrincipal === filtro ? '#fff' : colors.primary,
-              border: `1px solid ${colors.primary}`,
-              '&:hover': {
-                backgroundColor: filtroPrincipal === filtro ? colors.secondary : colors.primary,
-                color: '#fff'
-              }
+              borderColor: colors.primary,
+              color: colors.primary,
+              borderRadius: 2,
+              px: 3,
+              py: 1,
             }}
           >
-            {filtro}
+            Filtros Avançados
           </Button>
-        ))}
+
+          {activeFilterCount > 0 && (
+            <Button
+              variant="text"
+              startIcon={<ClearIcon />}
+              onClick={handleResetFilters}
+              sx={{
+                textTransform: 'none',
+                color: colors.error,
+                borderRadius: 2,
+                px: 3,
+                py: 1,
+              }}
+            >
+              Limpar Filtros
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* Filtros Avançados */}
-      <Box sx={{ mb: 4, p: 3, backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', borderRadius: 2 }}>
-        <Typography variant="h6" gutterBottom sx={{ color: colors.text }}>Filtros Avançados</Typography>
-        
-        <Grid container spacing={2}>
-          {/* Bairro */}
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: colors.text }}>Bairro</InputLabel>
-              <Select
-                value={filtrosAdicionais.bairro}
-                onChange={(e) => {
-                  setFiltrosAdicionais({ ...filtrosAdicionais, bairro: e.target.value });
-                  setPaginaAtual(1);
-                }}
-                sx={{ 
-                  backgroundColor: isDarkMode ? '#333' : '#fff',
-                  color: colors.text
-                }}
-                label="Bairro"
-              >
-                <MenuItem value="">Todos</MenuItem>
-                {[...new Set(imoveisFiltrados.map(i => i.Bairro))].filter(Boolean).map(bairro => (
-                  <MenuItem key={bairro} value={bairro}>{bairro}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+      {showAdvancedFilters && (
+        <Box sx={{ 
+          mb: 4,
+          p: 3, 
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', 
+          borderRadius: 2,
+          border: `1px solid ${colors.divider}`
+        }}>
+          <Typography variant="h6" gutterBottom sx={{ color: colors.text }}>
+            Filtros Avançados
+          </Typography>
+          
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colors.text }}>Bairro</InputLabel>
+                <Select
+                  value={filtrosAdicionais.bairro}
+                  onChange={(e) => handleFilterChange('bairro', e.target.value)}
+                  sx={{ 
+                    backgroundColor: colors.paper,
+                    color: colors.text,
+                    borderRadius: 2,
+                  }}
+                  label="Bairro"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {availableFilters.bairros.map(bairro => (
+                    <MenuItem key={bairro} value={bairro}>{bairro}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-          {/* Valor */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="body2" sx={{ color: colors.text, mb: 1 }}>
-              Faixa de Valor: {formatCurrency(filtrosAdicionais.valorMin)} - {formatCurrency(filtrosAdicionais.valorMax)}
-            </Typography>
-            <MuiSlider
-              value={[filtrosAdicionais.valorMin, filtrosAdicionais.valorMax]}
-              onChange={(_, newValue) => {
-                setFiltrosAdicionais({
-                  ...filtrosAdicionais,
-                  valorMin: newValue[0],
-                  valorMax: newValue[1]
-                });
-                setPaginaAtual(1);
-              }}
-              min={0}
-              max={5000000}
-              step={10000}
-              valueLabelDisplay="auto"
-              valueLabelFormat={formatCurrency}
-              sx={{ color: colors.primary }}
-            />
-          </Grid>
-
-          {/* Quartos */}
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel sx={{ color: colors.text }}>Mín. de Quartos</InputLabel>
-              <Select
-                value={filtrosAdicionais.quartos}
-                onChange={(e) => {
-                  setFiltrosAdicionais({ ...filtrosAdicionais, quartos: e.target.value });
-                  setPaginaAtual(1);
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colors.text }}>
+                  Faixa de Valor
+                </Typography>
+                <Tooltip title="Intervalo de valores do imóvel">
+                  <InfoIcon sx={{ color: colors.textSecondary, ml: 1, fontSize: '1rem' }} />
+                </Tooltip>
+              </Box>
+              <MuiSlider
+                value={[filtrosAdicionais.valorMin, filtrosAdicionais.valorMax]}
+                onChange={(_, newValue) => {
+                  handleFilterChange('valorMin', newValue[0]);
+                  handleFilterChange('valorMax', newValue[1]);
                 }}
-                sx={{ 
-                  backgroundColor: isDarkMode ? '#333' : '#fff',
-                  color: colors.text
-                }}
-                label="Mín. de Quartos"
-              >
-                <MenuItem value="">Qualquer</MenuItem>
-                {[1, 2, 3, 4, 5].map(num => (
-                  <MenuItem key={num} value={num}>{num} {num > 1 ? 'quartos' : 'quarto'}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+                min={availableFilters.minValor}
+                max={availableFilters.maxValor}
+                step={Math.max(10000, Math.floor((availableFilters.maxValor - availableFilters.minValor) / 20))}
+                valueLabelDisplay="auto"
+                valueLabelFormat={formatCurrency}
+                sx={{ color: colors.primary }}
+              />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: -1 }}>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  {formatCurrency(availableFilters.minValor)}
+                </Typography>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  {formatCurrency(availableFilters.maxValor)}
+                </Typography>
+              </Box>
+            </Grid>
 
-          {/* Área */}
-          <Grid item xs={12} sm={6} md={3}>
-            <Typography variant="body2" sx={{ color: colors.text, mb: 1 }}>
-              Área (m²): {filtrosAdicionais.areaMin} - {filtrosAdicionais.areaMax}
-            </Typography>
-            <MuiSlider
-              value={[filtrosAdicionais.areaMin, filtrosAdicionais.areaMax]}
-              onChange={(_, newValue) => {
-                setFiltrosAdicionais({
-                  ...filtrosAdicionais,
-                  areaMin: newValue[0],
-                  areaMax: newValue[1]
-                });
-                setPaginaAtual(1);
-              }}
-              min={0}
-              max={500}
-              step={10}
-              valueLabelDisplay="auto"
-              sx={{ color: colors.primary }}
-            />
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colors.text }}>Mín. de Quartos</InputLabel>
+                <Select
+                  value={filtrosAdicionais.quartos}
+                  onChange={(e) => handleFilterChange('quartos', e.target.value)}
+                  sx={{ 
+                    backgroundColor: colors.paper,
+                    color: colors.text,
+                    borderRadius: 2,
+                  }}
+                  label="Mín. de Quartos"
+                >
+                  <MenuItem value="">Qualquer</MenuItem>
+                  {Array.from({ length: availableFilters.maxQuartos }, (_, i) => i + 1).map(num => (
+                    <MenuItem key={num} value={num}>{num} {num > 1 ? 'quartos' : 'quarto'}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Typography variant="body2" sx={{ color: colors.text }}>
+                  Área (m²)
+                </Typography>
+                <Tooltip title="Área total do imóvel">
+                  <InfoIcon sx={{ color: colors.textSecondary, ml: 1, fontSize: '1rem' }} />
+                </Tooltip>
+              </Box>
+              <MuiSlider
+                value={[filtrosAdicionais.areaMin, filtrosAdicionais.areaMax]}
+                onChange={(_, newValue) => {
+                  handleFilterChange('areaMin', newValue[0]);
+                  handleFilterChange('areaMax', newValue[1]);
+                }}
+                min={availableFilters.minArea}
+                max={availableFilters.maxArea}
+                step={10}
+                valueLabelDisplay="auto"
+                sx={{ color: colors.primary }}
+              />
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: -1 }}>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  {availableFilters.minArea}m²
+                </Typography>
+                <Typography variant="caption" sx={{ color: colors.textSecondary }}>
+                  {availableFilters.maxArea}m²
+                </Typography>
+              </Box>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colors.text }}>Mín. de Vagas</InputLabel>
+                <Select
+                  value={filtrosAdicionais.vagas}
+                  onChange={(e) => handleFilterChange('vagas', e.target.value)}
+                  sx={{ 
+                    backgroundColor: colors.paper,
+                    color: colors.text,
+                    borderRadius: 2,
+                  }}
+                  label="Mín. de Vagas"
+                >
+                  <MenuItem value="">Qualquer</MenuItem>
+                  {Array.from({ length: availableFilters.maxVagas }, (_, i) => i + 1).map(num => (
+                    <MenuItem key={num} value={num}>{num} {num > 1 ? 'vagas' : 'vaga'}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colors.text }}>Tipo de Operação</InputLabel>
+                <Select
+                  value={filtrosAdicionais.tipoOperacao}
+                  onChange={(e) => handleFilterChange('tipoOperacao', e.target.value)}
+                  sx={{ 
+                    backgroundColor: colors.paper,
+                    color: colors.text,
+                    borderRadius: 2,
+                  }}
+                  label="Tipo de Operação"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  {availableFilters.tipoOperacoes.map(op => (
+                    <MenuItem key={op} value={op}>{op}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel sx={{ color: colors.text }}>Destaque</InputLabel>
+                <Select
+                  value={filtrosAdicionais.destaque}
+                  onChange={(e) => handleFilterChange('destaque', e.target.value)}
+                  sx={{ 
+                    backgroundColor: colors.paper,
+                    color: colors.text,
+                    borderRadius: 2,
+                  }}
+                  label="Destaque"
+                >
+                  <MenuItem value={false}>Todos</MenuItem>
+                  <MenuItem value={true}>Apenas Destaques</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
           </Grid>
-        </Grid>
-      </Box>
+        </Box>
+      )}
 
       {/* Resultados */}
-      {loading ? (
+      {imoveisData.loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
           <CircularProgress size={60} sx={{ color: colors.primary }} />
         </Box>
-      ) : error ? (
-        <Alert severity="error" sx={{ mb: 3 }}>{error}</Alert>
-      ) : imoveisPaginaAtual.length === 0 ? (
-        <Typography variant="h6" align="center" sx={{ color: colors.text, mt: 4 }}>
-          Nenhum imóvel encontrado com os filtros selecionados
-        </Typography>
+      ) : apiError ? (
+        <Alert severity="error" sx={{ mb: 3 }}>{apiError}</Alert>
+      ) : filteredImoveis.length === 0 ? (
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          minHeight: '300px',
+          textAlign: 'center',
+          p: 3
+        }}>
+          <Typography variant="h6" sx={{ color: colors.text, mb: 2 }}>
+            Nenhum imóvel encontrado com os filtros selecionados
+          </Typography>
+          <Button
+            variant="outlined"
+            onClick={handleResetFilters}
+            sx={{
+              borderColor: colors.primary,
+              color: colors.primary,
+              borderRadius: 2,
+              px: 3
+            }}
+          >
+            Limpar Filtros
+          </Button>
+        </Box>
       ) : (
         <>
           <Grid container spacing={3}>
             {imoveisPaginaAtual.map((imovel) => (
-              <Grid item xs={12} sm={6} md={4} key={imovel.Id}>
-                <motion.div
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
+              <Grid item xs={12} sm={6} md={4} key={imovel.id}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    backgroundColor: colors.paper,
+                    position: 'relative',
+                    borderRadius: 3,
+                    overflow: 'hidden',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                      transform: 'translateY(-5px)',
+                      boxShadow: `0 10px 20px ${isDarkMode ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.15)'}`
+                    }
+                  }}
                 >
-                  <Card
-                    sx={{
-                      height: '100%',
+                  {imovel.Destaque && (
+                    <Box sx={{
+                      position: 'absolute',
+                      top: 8,
+                      left: 8,
+                      zIndex: 3,
+                      backgroundColor: colors.accent,
+                      color: '#fff',
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: 1,
                       display: 'flex',
-                      flexDirection: 'column',
-                      transition: 'transform 0.3s ease',
-                      '&:hover': {
-                        transform: 'translateY(-5px)',
-                        boxShadow: 3
-                      },
-                      backgroundColor: isDarkMode ? '#424242' : '#fff'
-                    }}
-                  >
-                    {/* Carrossel de Fotos */}
-                    <Box sx={{ position: 'relative', height: 200 }}>
-                      {imovel.Fotos.length > 0 ? (
-                        <Slider {...settingsFotos}>
-                          {imovel.Fotos.map(foto => (
-                            <Box key={foto.Id} sx={{ height: 200 }}>
-                              <CardMedia
-                                component="img"
-                                image={foto.Url}
-                                alt={foto.Descricao || "Imóvel"}
-                                sx={{
-                                  height: '100%',
-                                  width: '100%',
-                                  objectFit: 'cover',
-                                  opacity: loadingImages[foto.Id] === false ? 1 : 0,
-                                  transition: 'opacity 0.3s ease'
-                                }}
-                                onLoad={() => handleImageLoad(foto.Id)}
-                                onError={() => handleImageLoad(foto.Id)}
-                              />
-                              {loadingImages[foto.Id] !== false && (
-                                <Box sx={{
-                                  position: 'absolute',
-                                  top: 0,
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  backgroundColor: isDarkMode ? '#333' : '#f5f5f5'
-                                }}>
-                                  <CircularProgress size={24} sx={{ color: colors.primary }} />
-                                </Box>
-                              )}
-                            </Box>
-                          ))}
-                        </Slider>
-                      ) : (
-                        <Box sx={{
-                          height: '100%',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: isDarkMode ? '#333' : '#f5f5f5'
-                        }}>
-                          <Typography variant="body2" sx={{ color: colors.text }}>
-                            Sem imagens
-                          </Typography>
-                        </Box>
-                      )}
+                      alignItems: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+                    }}>
+                      <StarIcon sx={{ fontSize: '1rem', mr: 0.5 }} />
+                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>
+                        Destaque
+                      </Typography>
                     </Box>
+                  )}
 
-                    <CardContent sx={{ flexGrow: 1 }}>
+                  {/* Carrossel de Fotos */}
+                  <Box sx={{ position: 'relative', height: 300 }}>
+                    {imovel.Fotos && imovel.Fotos.length > 0 ? (
+                      <Slider {...getCarouselSettings(imovel.id, imovel.Fotos.length)}>
+                        {imovel.Fotos.map((foto, index) => (
+                          <Box key={index} sx={{ height: 300 }}>
+                            <CardMedia
+                              component="img"
+                              image={foto.Url}
+                              alt={foto.Descricao || "Imóvel"}
+                              sx={{
+                                height: '100%',
+                                width: '100%',
+                                objectFit: 'cover'
+                              }}
+                              loading="lazy"
+                            />
+                          </Box>
+                        ))}
+                      </Slider>
+                    ) : (
+                      <Box sx={{
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: isDarkMode ? '#333' : '#f5f5f5'
+                      }}>
+                        <Typography variant="body2" sx={{ color: colors.text }}>
+                          Sem imagens
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <Typography 
                         variant="h6" 
                         component="h3" 
@@ -633,87 +1040,130 @@ const TodosImoveis = () => {
                           WebkitBoxOrient: 'vertical',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          minHeight: '3rem'
+                          minHeight: '3rem',
+                          pr: 1,
+                          fontWeight: '600'
                         }}
                       >
-                        {imovel.Titulo}
+                        {imovel.Titulo || "Imóvel sem título"}
                       </Typography>
-
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                      {imovel.isLancamento && (
                         <Chip 
-                          icon={<BedIcon />} 
-                          label={`${imovel.Dormitorios} quarto${imovel.Dormitorios > 1 ? 's' : ''}`} 
+                          label="Lançamento" 
                           size="small" 
+                          sx={{ 
+                            backgroundColor: colors.secondary,
+                            color: '#fff',
+                            fontWeight: 'bold',
+                            height: '24px'
+                          }} 
                         />
-                        <Chip 
-                          icon={<BathtubIcon />} 
-                          label={`${imovel.Banheiros} banheiro${imovel.Banheiros > 1 ? 's' : ''}`} 
-                          size="small" 
-                        />
-                        {imovel.Vagas > 0 && (
-                          <Chip 
-                            icon={<CarIcon />} 
-                            label={`${imovel.Vagas} vaga${imovel.Vagas > 1 ? 's' : ''}`} 
-                            size="small" 
-                          />
-                        )}
-                        {imovel.AreaTotal > 0 && (
-                          <Chip 
-                            icon={<AreaIcon />} 
-                            label={`${imovel.AreaTotal}m²`} 
-                            size="small" 
-                          />
-                        )}
-                      </Box>
-
-                      <Typography variant="body2" sx={{ color: colors.text, mb: 1 }}>
-                        <strong>Bairro:</strong> {imovel.Bairro || "Não informado"}
-                      </Typography>
-
-                      <Typography 
-                        variant="h6" 
-                        sx={{ 
-                          color: colors.accent,
-                          fontWeight: 'bold',
-                          mt: 1
-                        }}
-                      >
-                        {formatCurrency(imovel.ValorVenda)}
-                      </Typography>
-                    </CardContent>
-
-                    <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        onClick={() => navigate(`/imovel/${imovel.Id}`)}
-                        sx={{
-                          borderColor: colors.primary,
-                          color: colors.primary,
-                          '&:hover': {
-                            backgroundColor: colors.primary,
-                            color: '#fff'
-                          }
-                        }}
-                      >
-                        Detalhes
-                      </Button>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        onClick={() => handleAbrirAgendamento(imovel)}
-                        sx={{
-                          backgroundColor: colors.primary,
-                          '&:hover': {
-                            backgroundColor: colors.secondary
-                          }
-                        }}
-                      >
-                        Agendar
-                      </Button>
+                      )}
                     </Box>
-                  </Card>
-                </motion.div>
+
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+                      <Tooltip title="Quartos">
+                        <Chip 
+                          icon={<BedIcon sx={{ fontSize: '16px' }} />} 
+                          label={`${imovel.Dormitorios || 0}`} 
+                          size="small" 
+                          sx={{ 
+                            backgroundColor: isDarkMode ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
+                            minWidth: '50px'
+                          }}
+                        />
+                      </Tooltip>
+                      <Tooltip title="Banheiros">
+                        <Chip 
+                          icon={<BathtubIcon sx={{ fontSize: '16px' }} />} 
+                          label={`${imovel.Banheiros || 0}`} 
+                          size="small" 
+                          sx={{ 
+                            backgroundColor: isDarkMode ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
+                            minWidth: '50px'
+                          }}
+                        />
+                      </Tooltip>
+                      {imovel.Vagas > 0 && (
+                        <Tooltip title="Vagas">
+                          <Chip 
+                            icon={<CarIcon sx={{ fontSize: '16px' }} />} 
+                            label={`${imovel.Vagas}`} 
+                            size="small" 
+                            sx={{ 
+                              backgroundColor: isDarkMode ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
+                              minWidth: '50px'
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {imovel.AreaTotal > 0 && (
+                        <Tooltip title="Área (m²)">
+                          <Chip 
+                            icon={<AreaIcon sx={{ fontSize: '16px' }} />} 
+                            label={`${imovel.AreaTotal}`} 
+                            size="small" 
+                            sx={{ 
+                              backgroundColor: isDarkMode ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)',
+                              minWidth: '50px'
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                    </Box>
+
+                    <Typography variant="body2" sx={{ color: colors.text, mb: 1 }}>
+                      <strong>Bairro:</strong> {imovel.Bairro || "Não informado"}
+                    </Typography>
+
+                    <Typography 
+                      variant="h6" 
+                      sx={{ 
+                        color: colors.accent,
+                        fontWeight: 'bold',
+                        mt: 1,
+                        fontSize: '1.25rem'
+                      }}
+                    >
+                      {formatCurrency(
+                        imovel.TipoOperacao === "Locação" ? imovel.ValorLocacao : imovel.ValorVenda
+                      )}
+                    </Typography>
+                  </CardContent>
+
+                  <Box sx={{ p: 2, display: 'flex', gap: 2 }}>
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      onClick={() => navigate(`/imovel/${imovel.id}`)}
+                      sx={{
+                        borderColor: colors.primary,
+                        color: colors.primary,
+                        borderRadius: 2,
+                        '&:hover': {
+                          backgroundColor: colors.primary,
+                          color: '#fff'
+                        }
+                      }}
+                    >
+                      Detalhes
+                    </Button>
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      onClick={() => handleAbrirAgendamento(imovel)}
+                      sx={{
+                        backgroundColor: colors.primary,
+                        borderRadius: 2,
+                        '&:hover': {
+                          backgroundColor: colors.secondary
+                        }
+                      }}
+                    >
+                      Agendar
+                    </Button>
+                  </Box>
+                </Card>
               </Grid>
             ))}
           </Grid>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Container, Grid, Typography, Box, useTheme, Paper, Fade } from "@mui/material";
 import { keyframes } from "@emotion/react";
+import { useSigaviApi } from "../services/api";
 
 // Animação de fade-in
 const fadeIn = keyframes`
@@ -8,16 +9,18 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
+const LOCAL_API_BASE_URL = "http://127.0.0.1:8000"; // Define the local API base URL
+
 const About = () => {
   const [aboutData, setAboutData] = useState({ foto: "", descricao: "" });
   const theme = useTheme();
+  const { apiRequest } = useSigaviApi();
 
   // Busca os dados do backend
   useEffect(() => {
     const fetchAboutData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/abouts/");
-        const data = await response.json();
+        const data = await apiRequest('ABOUT_DATA');
         setAboutData(data);
       } catch (error) {
         console.error("Erro ao buscar dados:", error);
@@ -25,7 +28,7 @@ const About = () => {
     };
 
     fetchAboutData();
-  }, []);
+  }, [apiRequest]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -45,7 +48,7 @@ const About = () => {
             <Fade in={true} timeout={1000}>
               <Box
                 component="img"
-                src={aboutData.foto ? `http://127.0.0.1:8000${aboutData.foto}` : "/img/default.jpg"}
+                src={aboutData.foto ? `${LOCAL_API_BASE_URL}${aboutData.foto}` : "/img/default.jpg"}
                 alt="Foto sobre nós"
                 sx={{
                   width: "100%",

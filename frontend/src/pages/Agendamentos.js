@@ -358,7 +358,7 @@ const Agendamentos = () => {
                       value={dataVisita}
                       onChange={(newValue) => setDataVisita(newValue)}
                       minDate={new Date()}
-                      inputFormat="dd/MM/yyyy"
+                      inputFormat="DD/MM/YYYY"
                       renderInput={(params) => (
                         <TextField
                           {...params}
